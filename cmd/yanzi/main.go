@@ -38,7 +38,35 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: yanzi <capture|verify|chain> [args]")
+	fmt.Fprintln(os.Stderr, `usage:
+  yanzi <command> [args]
+
+commands:
+  capture  Create a new intent record via the library API.
+  verify   Verify an intent by id.
+  chain    Print an intent chain by id.
+
+capture args:
+  --author <name>         Required author name.
+  --response-file <path>  Required response file path.
+  --prompt-file <path>    Read prompt from file.
+  --edit                  Open $EDITOR to edit the prompt.
+  (or)                    Provide prompt via stdin.
+  --title <title>         Optional title.
+  --source <source>       Optional source type (default "cli").
+  --prev-hash <hash>      Optional previous hash.
+  --meta k=v              Optional metadata (repeatable).
+
+verify args:
+  <intent-id>             Intent id to verify.
+
+chain args:
+  <intent-id>             Intent id to chain.
+
+examples:
+  yanzi capture --author "Ada" --prompt-file prompt.txt --response-file response.txt --meta lang=go
+  yanzi verify 01HZX9Q4X8N9JZ1K2G9N8M4V3P
+  yanzi chain 01HZX9Q4X8N9JZ1K2G9N8M4V3P`)
 }
 
 func isHelpArg(arg string) bool {

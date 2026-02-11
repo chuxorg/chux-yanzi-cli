@@ -1,4 +1,5 @@
-.PHONY: build run
+.PHONY: build run sanity
+
 
 build:
 	@mkdir -p bin
@@ -6,3 +7,7 @@ build:
 
 run:
 	go run ./cmd/yanzi $(ARGS)
+
+sanity:
+   
+   go run ./yanzi capture --prompt-file=foo.txt --response-file=bar.txt ...

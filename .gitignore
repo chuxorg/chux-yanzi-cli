@@ -7,18 +7,32 @@
 *.dll
 *.so
 *.dylib
+*.a
+*.o
+*.obj
 
 # Test binary, built with `go test -c`
 *.test
+*.test.exe
 
 # Code coverage profiles and other test artifacts
 *.out
 coverage.*
 *.coverprofile
 profile.cov
+*.pprof
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# Build output
+bin/
+build/
+dist/
+out/
+tmp/
+/yanzi
+/yanzi.exe
 
 # Go workspace file
 go.work
@@ -32,3 +46,7 @@ go.work.sum
 # .idea/
 # .vscode/
 .DS_Store
+
+# Caches
+.cache/
+.go-build/

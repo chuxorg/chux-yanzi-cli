@@ -33,6 +33,7 @@ out/
 tmp/
 /yanzi
 /yanzi.exe
+/yanz_*
 
 # Go workspace file
 go.work

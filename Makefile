@@ -1,4 +1,4 @@
-.PHONY: build run sanity
+.PHONY: build run
 
 
 build:
@@ -10,4 +10,4 @@ run:
 
 sanity:
    
-   go run ./yanzi capture --prompt-file=foo.txt --response-file=bar.txt ...
+   

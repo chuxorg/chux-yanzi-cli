@@ -1,23 +1,36 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
-const DefaultBaseURL = "http://localhost:8080"
+type Mode string
+
+const (
+	ModeLocal Mode = "local"
+	ModeHTTP  Mode = "http"
+)
 
 // Config holds CLI configuration values loaded from disk.
 type Config struct {
-	BaseURL string
+	Mode    Mode   `yaml:"mode"`
+	DBPath  string `yaml:"db_path"`
+	BaseURL string `yaml:"base_url"`
 }
 
 // Load reads ~/.yanzi/config.yaml and returns defaults if missing.
 func Load() (Config, error) {
-	cfg := Config{BaseURL: DefaultBaseURL}
+	cfg := Config{
+		Mode: ModeLocal,
+	}
 	path, err := ConfigPath()
 	if err != nil {
 		return cfg, err
@@ -25,33 +38,58 @@ func Load() (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			applyDefaults(&cfg)
 			return cfg, nil
 		}
 		return cfg, fmt.Errorf("read config: %w", err)
 	}
 
-	lines := strings.Split(string(data), "\n")
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		parts := strings.SplitN(trimmed, ":", 2)
-		if len(parts) != 2 {
-			return cfg, fmt.Errorf("invalid config line %d", i+1)
-		}
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-		value = strings.Trim(value, "\"'")
-		if key == "base_url" {
-			if value == "" {
-				return cfg, errors.New("base_url cannot be empty")
-			}
-			cfg.BaseURL = value
-		}
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&cfg); err != nil {
+		return cfg, fmt.Errorf("invalid config: %w", err)
+	}
+	if err := ensureEOF(dec); err != nil {
+		return cfg, fmt.Errorf("invalid config: %w", err)
+	}
+
+	if cfg.Mode == "" {
+		cfg.Mode = ModeLocal
+	}
+
+	applyDefaults(&cfg)
+	cfg.BaseURL = strings.TrimSpace(cfg.BaseURL)
+	cfg.DBPath = strings.TrimSpace(cfg.DBPath)
+
+	if cfg.Mode != ModeLocal && cfg.Mode != ModeHTTP {
+		return cfg, fmt.Errorf("invalid mode: %s", cfg.Mode)
+	}
+	if cfg.Mode == ModeHTTP && cfg.BaseURL == "" {
+		return cfg, errors.New("base_url is required when mode=http")
+	}
+	if cfg.Mode == ModeLocal && cfg.DBPath == "" {
+		return cfg, errors.New("db_path is required when mode=local")
 	}
 
 	return cfg, nil
+}
+
+func applyDefaults(cfg *Config) {
+	if cfg.Mode == ModeLocal && cfg.DBPath == "" {
+		if path, err := DefaultDBPath(); err == nil {
+			cfg.DBPath = path
+		}
+	}
+}
+
+func ensureEOF(dec *yaml.Decoder) error {
+	var extra any
+	if err := dec.Decode(&extra); err == nil {
+		return errors.New("multiple YAML documents are not supported")
+	} else if !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
 }
 
 // ConfigPath returns the full path to ~/.yanzi/config.yaml.
@@ -70,4 +108,13 @@ func StateDir() (string, error) {
 		return "", fmt.Errorf("resolve home: %w", err)
 	}
 	return filepath.Join(home, ".yanzi"), nil
+}
+
+// DefaultDBPath returns the default SQLite path under ~/.yanzi.
+func DefaultDBPath() (string, error) {
+	dir, err := StateDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "yanzi.db"), nil
 }

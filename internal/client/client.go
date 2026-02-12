@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/chuxorg/chux-yanzi-core/model"
 )
 
 // Client is a minimal HTTP client for the Yanzi Library API.
@@ -19,18 +21,7 @@ type Client struct {
 }
 
 // IntentRecord mirrors the server v0 schema.
-type IntentRecord struct {
-	ID         string          `json:"id"`
-	CreatedAt  string          `json:"created_at"`
-	Author     string          `json:"author"`
-	SourceType string          `json:"source_type"`
-	Title      string          `json:"title,omitempty"`
-	Prompt     string          `json:"prompt"`
-	Response   string          `json:"response"`
-	Meta       json.RawMessage `json:"meta,omitempty"`
-	PrevHash   string          `json:"prev_hash,omitempty"`
-	Hash       string          `json:"hash"`
-}
+type IntentRecord = model.IntentRecord
 
 // VerifyResponse is returned by the /verify endpoint.
 type VerifyResponse struct {

@@ -27,11 +27,37 @@ func RunVerify(args []string) error {
 	if err != nil {
 		return err
 	}
-	cli := client.New(cfg.BaseURL)
+	var resp verifyResult
+	switch cfg.Mode {
+	case config.ModeHTTP:
+		cli := client.New(cfg.BaseURL)
+		httpResp, err := cli.VerifyIntent(context.Background(), id)
+		if err != nil {
+			return fmt.Errorf("http request to %s failed: %w", cfg.BaseURL, err)
+		}
+		resp = verifyResult{
+			ID:           httpResp.ID,
+			Valid:        httpResp.Valid,
+			StoredHash:   httpResp.StoredHash,
+			ComputedHash: httpResp.ComputedHash,
+			PrevHash:     httpResp.PrevHash,
+			Error:        httpResp.Error,
+		}
+	case config.ModeLocal:
+		ctx := context.Background()
+		store, err := openLocalStore(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		defer store.Close()
 
-	resp, err := cli.VerifyIntent(context.Background(), id)
-	if err != nil {
-		return err
+		localResp, err := verifyLocalIntent(ctx, store, id)
+		if err != nil {
+			return err
+		}
+		resp = localResp
+	default:
+		return fmt.Errorf("invalid mode: %s", cfg.Mode)
 	}
 
 	status := "✖ INVALID"

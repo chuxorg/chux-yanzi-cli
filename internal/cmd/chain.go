@@ -27,11 +27,35 @@ func RunChain(args []string) error {
 	if err != nil {
 		return err
 	}
-	cli := client.New(cfg.BaseURL)
+	var resp chainResult
+	switch cfg.Mode {
+	case config.ModeHTTP:
+		cli := client.New(cfg.BaseURL)
+		httpResp, err := cli.ChainIntent(context.Background(), id)
+		if err != nil {
+			return fmt.Errorf("http request to %s failed: %w", cfg.BaseURL, err)
+		}
+		resp = chainResult{
+			HeadID:       httpResp.HeadID,
+			Length:       httpResp.Length,
+			Intents:      httpResp.Intents,
+			MissingLinks: httpResp.MissingLinks,
+		}
+	case config.ModeLocal:
+		ctx := context.Background()
+		store, err := openLocalStore(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		defer store.Close()
 
-	resp, err := cli.ChainIntent(context.Background(), id)
-	if err != nil {
-		return err
+		localResp, err := chainLocalIntent(ctx, store, id)
+		if err != nil {
+			return err
+		}
+		resp = localResp
+	default:
+		return fmt.Errorf("invalid mode: %s", cfg.Mode)
 	}
 
 	fmt.Printf("chain head: %s\n", resp.HeadID)

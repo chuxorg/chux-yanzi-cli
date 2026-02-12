@@ -97,23 +97,53 @@ func RunCapture(args []string) error {
 	if err != nil {
 		return err
 	}
-	cli := client.New(cfg.BaseURL)
-
-	req := client.CreateIntentRequest{
+	input := createIntentInput{
 		Author:     *author,
 		SourceType: *source,
 		Title:      *title,
 		Prompt:     string(prompt),
 		Response:   string(response),
 		PrevHash:   *prevHash,
-	}
-	if meta != nil {
-		req.Meta = meta
+		Meta:       meta,
 	}
 
-	intent, err := cli.CreateIntent(context.Background(), req)
-	if err != nil {
-		return err
+	var intent client.IntentRecord
+	switch cfg.Mode {
+	case config.ModeHTTP:
+		cli := client.New(cfg.BaseURL)
+		req := client.CreateIntentRequest{
+			Author:     input.Author,
+			SourceType: input.SourceType,
+			Title:      input.Title,
+			Prompt:     input.Prompt,
+			Response:   input.Response,
+			PrevHash:   input.PrevHash,
+		}
+		if input.Meta != nil {
+			req.Meta = input.Meta
+		}
+		intent, err = cli.CreateIntent(context.Background(), req)
+		if err != nil {
+			return fmt.Errorf("http request to %s failed: %w", cfg.BaseURL, err)
+		}
+	case config.ModeLocal:
+		ctx := context.Background()
+		store, err := openLocalStore(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		defer store.Close()
+
+		record, err := buildLocalIntent(input)
+		if err != nil {
+			return err
+		}
+		if err := store.CreateIntent(ctx, record); err != nil {
+			return err
+		}
+		intent = record
+	default:
+		return fmt.Errorf("invalid mode: %s", cfg.Mode)
 	}
 
 	fmt.Printf("id: %s\n", intent.ID)

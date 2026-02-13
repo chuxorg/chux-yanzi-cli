@@ -7,10 +7,17 @@ import (
 	"github.com/chuxorg/chux-yanzi-cli/internal/cmd"
 )
 
+var version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
 		os.Exit(1)
+	}
+
+	if os.Args[1] == "--version" {
+		printVersion()
+		return
 	}
 
 	if isHelpArg(os.Args[1]) {
@@ -30,6 +37,9 @@ func main() {
 		err = cmd.RunList(os.Args[2:])
 	case "show":
 		err = cmd.RunShow(os.Args[2:])
+	case "version":
+		printVersion()
+		return
 	default:
 		usage()
 		os.Exit(1)
@@ -51,6 +61,7 @@ commands:
   chain    Print an intent chain by id.
   list     List intent records.
   show     Show intent details by id.
+  version  Print the CLI version.
 
 capture args:
   --author <name>         Required author name.
@@ -82,9 +93,14 @@ examples:
   yanzi verify 01HZX9Q4X8N9JZ1K2G9N8M4V3P
   yanzi chain 01HZX9Q4X8N9JZ1K2G9N8M4V3P
   yanzi list --limit 10
-  yanzi show 01HZX9Q4X8N9JZ1K2G9N8M4V3P`)
+  yanzi show 01HZX9Q4X8N9JZ1K2G9N8M4V3P
+  yanzi version`)
 }
 
 func isHelpArg(arg string) bool {
 	return arg == "-h" || arg == "--help" || arg == "?"
+}
+
+func printVersion() {
+	fmt.Printf("yanzi %s\n", version)
 }

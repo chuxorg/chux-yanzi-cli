@@ -191,6 +191,50 @@ func chainLocalIntent(ctx context.Context, st *store.Store, id string) (chainRes
 	}, nil
 }
 
+func listLocalIntents(ctx context.Context, st *store.Store, author, source string, limit int) ([]model.IntentRecord, error) {
+	fetchLimit := limit
+	if fetchLimit <= 0 {
+		fetchLimit = 20
+	}
+	if author != "" || source != "" {
+		fetchLimit = fetchLimit * 5
+		if fetchLimit < 100 {
+			fetchLimit = 100
+		}
+	}
+
+	intents, err := st.ListIntents(ctx, fetchLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]model.IntentRecord, 0, len(intents))
+	for _, intent := range intents {
+		if author != "" && intent.Author != author {
+			continue
+		}
+		if source != "" && intent.SourceType != source {
+			continue
+		}
+		filtered = append(filtered, intent)
+		if limit > 0 && len(filtered) >= limit {
+			break
+		}
+	}
+	return filtered, nil
+}
+
+func getLocalIntent(ctx context.Context, st *store.Store, id string) (model.IntentRecord, error) {
+	record, err := st.GetIntent(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.IntentRecord{}, fmt.Errorf("intent not found for ID %s", id)
+		}
+		return model.IntentRecord{}, err
+	}
+	return record, nil
+}
+
 type createIntentInput struct {
 	Author     string
 	SourceType string

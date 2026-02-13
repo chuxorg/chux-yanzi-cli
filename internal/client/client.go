@@ -41,6 +41,11 @@ type ChainResponse struct {
 	MissingLinks []string       `json:"missing_links,omitempty"`
 }
 
+// ListResponse is returned by the /intents endpoint.
+type ListResponse struct {
+	Intents []IntentRecord `json:"intents"`
+}
+
 // CreateIntentRequest is the payload for POST /v0/intents.
 type CreateIntentRequest struct {
 	Author     string          `json:"author"`
@@ -85,6 +90,39 @@ func (c *Client) VerifyIntent(ctx context.Context, id string) (VerifyResponse, e
 func (c *Client) ChainIntent(ctx context.Context, id string) (ChainResponse, error) {
 	var out ChainResponse
 	path := fmt.Sprintf("/v0/intents/%s/chain", id)
+	if err := c.doJSON(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ListIntents calls GET /v0/intents.
+func (c *Client) ListIntents(ctx context.Context, author, source string, limit int) (ListResponse, error) {
+	var out ListResponse
+	params := url.Values{}
+	if author != "" {
+		params.Set("author", author)
+	}
+	if source != "" {
+		params.Set("source", source)
+	}
+	if limit > 0 {
+		params.Set("limit", fmt.Sprintf("%d", limit))
+	}
+	path := "/v0/intents"
+	if len(params) > 0 {
+		path = path + "?" + params.Encode()
+	}
+	if err := c.doJSON(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// GetIntent calls GET /v0/intents/{id}.
+func (c *Client) GetIntent(ctx context.Context, id string) (IntentRecord, error) {
+	var out IntentRecord
+	path := fmt.Sprintf("/v0/intents/%s", id)
 	if err := c.doJSON(ctx, http.MethodGet, path, nil, &out); err != nil {
 		return out, err
 	}

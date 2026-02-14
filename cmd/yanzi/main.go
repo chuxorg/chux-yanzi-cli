@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/cmd"
+	"github.com/chuxorg/chux-yanzi-cli/internal/config"
 )
 
 var version = "dev"
@@ -16,7 +17,10 @@ func main() {
 	}
 
 	if os.Args[1] == "--version" {
-		printVersion()
+		if err := printVersion(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		return
 	}
 
@@ -37,8 +41,13 @@ func main() {
 		err = cmd.RunList(os.Args[2:])
 	case "show":
 		err = cmd.RunShow(os.Args[2:])
+	case "mode":
+		err = cmd.RunMode(os.Args[2:])
 	case "version":
-		printVersion()
+		if err := printVersion(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		return
 	default:
 		usage()
@@ -61,6 +70,7 @@ commands:
   chain    Print an intent chain by id.
   list     List intent records.
   show     Show intent details by id.
+  mode     Show or set runtime mode (local | http).
   version  Print the CLI version.
 
 capture args:
@@ -89,6 +99,14 @@ list args:
 show args:
   <intent-id>             Intent id to show.
 
+mode args:
+  (no args)              Show current mode.
+  local                  Set mode to local.
+  http                   Set mode to http.
+
+notes:
+  mode set to http does not start libraryd.
+
 examples:
   yanzi capture --author "Ada" --prompt-file prompt.txt --response-file response.txt --meta lang=go
   yanzi capture --author "Ada" --prompt "Hello" --response "World"
@@ -96,6 +114,9 @@ examples:
   yanzi chain 01HZX9Q4X8N9JZ1K2G9N8M4V3P
   yanzi list --limit 10
   yanzi show 01HZX9Q4X8N9JZ1K2G9N8M4V3P
+  yanzi mode
+  yanzi mode local
+  yanzi mode http
   yanzi version`)
 }
 
@@ -103,6 +124,21 @@ func isHelpArg(arg string) bool {
 	return arg == "-h" || arg == "--help" || arg == "?"
 }
 
-func printVersion() {
+func printVersion() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
 	fmt.Printf("yanzi %s\n", version)
+	fmt.Printf("mode: %s\n", formatMode(cfg))
+	return nil
+}
+
+func formatMode(cfg config.Config) string {
+	switch cfg.Mode {
+	case config.ModeHTTP:
+		return fmt.Sprintf("http (%s)", cfg.BaseURL)
+	default:
+		return "local"
+	}
 }

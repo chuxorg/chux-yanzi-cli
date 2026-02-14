@@ -83,6 +83,7 @@ chain args:
 list args:
   --author <name>         Optional author filter.
   --source <source>       Optional source filter.
+  --meta k=v              Optional meta filter (repeatable; exact match; AND).
   --limit <n>             Max records to return (default 20).
 
 show args:

@@ -191,12 +191,12 @@ func chainLocalIntent(ctx context.Context, st *store.Store, id string) (chainRes
 	}, nil
 }
 
-func listLocalIntents(ctx context.Context, st *store.Store, author, source string, limit int) ([]model.IntentRecord, error) {
+func listLocalIntents(ctx context.Context, st *store.Store, author, source string, limit int, metaFilters map[string]string) ([]model.IntentRecord, error) {
 	fetchLimit := limit
 	if fetchLimit <= 0 {
 		fetchLimit = 20
 	}
-	if author != "" || source != "" {
+	if author != "" || source != "" || len(metaFilters) > 0 {
 		fetchLimit = fetchLimit * 5
 		if fetchLimit < 100 {
 			fetchLimit = 100
@@ -217,9 +217,17 @@ func listLocalIntents(ctx context.Context, st *store.Store, author, source strin
 			continue
 		}
 		filtered = append(filtered, intent)
-		if limit > 0 && len(filtered) >= limit {
-			break
+	}
+
+	if len(metaFilters) > 0 {
+		filtered, err = store.FilterIntentsByMeta(filtered, metaFilters)
+		if err != nil {
+			return nil, err
 		}
+	}
+
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
 	}
 	return filtered, nil
 }

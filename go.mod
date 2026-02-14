@@ -3,11 +3,9 @@ module github.com/chuxorg/chux-yanzi-cli
 go 1.24.0
 
 require (
-	github.com/chuxorg/chux-yanzi-core v0.0.0-20260212010410-3e6e4c101aab
+	github.com/chuxorg/chux-yanzi-core v0.0.0-20260214161101-b6a347b4c093
 	gopkg.in/yaml.v3 v3.0.1
 )
-
-replace github.com/chuxorg/chux-yanzi-core => ../chux-yanzi-core
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect

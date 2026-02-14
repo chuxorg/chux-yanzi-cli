@@ -23,15 +23,18 @@ func RunCapture(args []string) error {
 	fs.SetOutput(os.Stderr)
 
 	var (
-		title        = fs.String("title", "", "optional title")
-		author       = fs.String("author", "", "required author")
-		source       = fs.String("source", "cli", "source type")
-		promptFile   = fs.String("prompt-file", "", "prompt file path")
-		responseFile = fs.String("response-file", "", "response file path")
-		prevHash     = fs.String("prev-hash", "", "previous hash")
-		useEditor    = fs.Bool("edit", false, "edit prompt in $EDITOR")
-		metaPairs    = &kvPairs{}
+		title      = fs.String("title", "", "optional title")
+		author     = fs.String("author", "", "required author")
+		source     = fs.String("source", "cli", "source type")
+		promptFlag = stringFlag{help: "prompt text (exclusive with --prompt-file)"}
+		promptFile = fs.String("prompt-file", "", "prompt file path (exclusive with --prompt)")
+		respFlag   = stringFlag{help: "response text (exclusive with --response-file)"}
+		respFile   = fs.String("response-file", "", "response file path (exclusive with --response)")
+		prevHash   = fs.String("prev-hash", "", "previous hash")
+		metaPairs  = &kvPairs{}
 	)
+	fs.Var(&promptFlag, "prompt", promptFlag.help)
+	fs.Var(&respFlag, "response", respFlag.help)
 	fs.Var(metaPairs, "meta", "meta key=value (repeatable)")
 
 	if err := fs.Parse(args); err != nil {
@@ -41,8 +44,15 @@ func RunCapture(args []string) error {
 	if *author == "" {
 		return errors.New("--author is required")
 	}
-	if *responseFile == "" {
-		return errors.New("--response-file is required")
+	promptInline := promptFlag.set
+	promptFromFile := *promptFile != ""
+	if promptInline == promptFromFile {
+		return errors.New("exactly one of --prompt or --prompt-file must be provided")
+	}
+	responseInline := respFlag.set
+	responseFromFile := *respFile != ""
+	if responseInline == responseFromFile {
+		return errors.New("exactly one of --response or --response-file must be provided")
 	}
 
 	hasStdin, err := stdinHasData()
@@ -50,42 +60,36 @@ func RunCapture(args []string) error {
 		return err
 	}
 
-	if *useEditor {
-		if *promptFile != "" {
-			return errors.New("--edit cannot be used with --prompt-file")
-		}
-		if hasStdin {
-			return errors.New("--edit cannot be used with stdin")
-		}
+	if hasStdin {
+		return errors.New("stdin is not supported; use --prompt or --prompt-file")
 	}
 
-	var prompt []byte
+	var promptContent []byte
 	switch {
-	case *useEditor:
-		content, err := readPromptFromEditor()
-		if err != nil {
-			return err
-		}
-		prompt = content
-	case *promptFile != "":
+	case promptInline:
+		promptContent = []byte(promptFlag.value)
+	case promptFromFile:
 		content, err := os.ReadFile(*promptFile)
 		if err != nil {
 			return fmt.Errorf("read prompt file: %w", err)
 		}
-		prompt = content
-	case hasStdin:
-		content, err := readPromptFromStdin()
-		if err != nil {
-			return err
-		}
-		prompt = content
+		promptContent = content
 	default:
-		return errors.New("prompt must be provided via --prompt-file, stdin, or --edit")
+		return errors.New("prompt must be provided via --prompt or --prompt-file")
 	}
 
-	response, err := os.ReadFile(*responseFile)
-	if err != nil {
-		return fmt.Errorf("read response file: %w", err)
+	var responseContent []byte
+	switch {
+	case responseInline:
+		responseContent = []byte(respFlag.value)
+	case responseFromFile:
+		content, err := os.ReadFile(*respFile)
+		if err != nil {
+			return fmt.Errorf("read response file: %w", err)
+		}
+		responseContent = content
+	default:
+		return errors.New("response must be provided via --response or --response-file")
 	}
 
 	meta, err := metaPairs.ToJSON()
@@ -101,8 +105,8 @@ func RunCapture(args []string) error {
 		Author:     *author,
 		SourceType: *source,
 		Title:      *title,
-		Prompt:     string(prompt),
-		Response:   string(response),
+		Prompt:     string(promptContent),
+		Response:   string(responseContent),
 		PrevHash:   *prevHash,
 		Meta:       meta,
 	}
@@ -185,6 +189,23 @@ func (k *kvPairs) ToJSON() (json.RawMessage, error) {
 		return nil, fmt.Errorf("encode meta: %w", err)
 	}
 	return json.RawMessage(b), nil
+}
+
+// stringFlag tracks whether a string flag was explicitly set.
+type stringFlag struct {
+	set   bool
+	value string
+	help  string
+}
+
+func (s *stringFlag) String() string {
+	return s.value
+}
+
+func (s *stringFlag) Set(value string) error {
+	s.value = value
+	s.set = true
+	return nil
 }
 
 func saveLastHash(hash string) error {

@@ -65,10 +65,10 @@ commands:
 
 capture args:
   --author <name>         Required author name.
-  --response-file <path>  Required response file path.
-  --prompt-file <path>    Read prompt from file.
-  --edit                  Open $EDITOR to edit the prompt.
-  (or)                    Provide prompt via stdin.
+  --prompt <text>         Prompt text (exclusive with --prompt-file).
+  --prompt-file <path>    Prompt file path (exclusive with --prompt).
+  --response <text>       Response text (exclusive with --response-file).
+  --response-file <path>  Response file path (exclusive with --response).
   --title <title>         Optional title.
   --source <source>       Optional source type (default "cli").
   --prev-hash <hash>      Optional previous hash.
@@ -90,6 +90,7 @@ show args:
 
 examples:
   yanzi capture --author "Ada" --prompt-file prompt.txt --response-file response.txt --meta lang=go
+  yanzi capture --author "Ada" --prompt "Hello" --response "World"
   yanzi verify 01HZX9Q4X8N9JZ1K2G9N8M4V3P
   yanzi chain 01HZX9Q4X8N9JZ1K2G9N8M4V3P
   yanzi list --limit 10

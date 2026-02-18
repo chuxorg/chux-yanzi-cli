@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/chuxorg/chux-yanzi-core v0.0.0-20260214161101-b6a347b4c093
+	github.com/yourusername/yanzi-library v0.0.0-20260218003603-1c6a6ad24515
 	gopkg.in/yaml.v3 v3.0.1
 )
 

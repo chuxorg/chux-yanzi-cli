@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/config"
 	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
@@ -18,10 +17,8 @@ func RunProject(args []string) error {
 	}
 
 	switch args[0] {
-	case "create":
-		return runProjectCreate(args[1:])
-	case "list":
-		return runProjectList(args[1:])
+	case "use":
+		return runProjectUse(args[1:])
 	case "current":
 		return runProjectCurrent(args[1:])
 	default:
@@ -29,70 +26,11 @@ func RunProject(args []string) error {
 	}
 }
 
-func runProjectCreate(args []string) error {
-	var (
-		name        string
-		description string
-	)
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch {
-		case arg == "--description":
-			if i+1 >= len(args) {
-				return errors.New("usage: yanzi project create <name> [--description \"...\"]")
-			}
-			description = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--description="):
-			description = strings.TrimPrefix(arg, "--description=")
-		case strings.HasPrefix(arg, "-"):
-			return fmt.Errorf("unknown flag: %s", arg)
-		default:
-			if name != "" {
-				return errors.New("usage: yanzi project create <name> [--description \"...\"]")
-			}
-			name = arg
-		}
+func runProjectUse(args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: yanzi project use <name>")
 	}
-	if name == "" {
-		return errors.New("usage: yanzi project create <name> [--description \"...\"]")
-	}
-
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-
-	switch cfg.Mode {
-	case config.ModeLocal:
-		ctx := context.Background()
-		db, closeFn, err := openLocalProjectDB(ctx, cfg)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			_ = closeFn()
-		}()
-
-		project, err := yanzilibrary.CreateProject(ctx, db, name, description)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("hash: %s\n", project.Hash)
-		fmt.Println("Project created.")
-		return nil
-	case config.ModeHTTP:
-		return errors.New("project commands are not available in http mode")
-	default:
-		return fmt.Errorf("invalid mode: %s", cfg.Mode)
-	}
-}
-
-func runProjectList(args []string) error {
-	if len(args) != 0 {
-		return errors.New("usage: yanzi project list")
-	}
+	name := args[0]
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -115,10 +53,22 @@ func runProjectList(args []string) error {
 			return err
 		}
 
-		fmt.Println("Name\tCreatedAt\tDescription")
+		found := false
 		for _, project := range projects {
-			fmt.Printf("%s\t%s\t%s\n", project.Name, project.CreatedAt, project.Description)
+			if project.Name == name {
+				found = true
+				break
+			}
 		}
+		if !found {
+			return fmt.Errorf("project not found: %s", name)
+		}
+
+		if err := saveActiveProject(name); err != nil {
+			return err
+		}
+
+		fmt.Printf("Active project set to %s.\n", name)
 		return nil
 	case config.ModeHTTP:
 		return errors.New("project commands are not available in http mode")
@@ -131,12 +81,22 @@ func runProjectCurrent(args []string) error {
 	if len(args) != 0 {
 		return errors.New("usage: yanzi project current")
 	}
-	fmt.Println("No active project")
+
+	active, err := loadActiveProject()
+	if err != nil {
+		return err
+	}
+	if active == "" {
+		fmt.Println("No active project")
+		return nil
+	}
+
+	fmt.Printf("Active project: %s\n", active)
 	return nil
 }
 
 func projectUsageError() error {
-	return errors.New("usage: yanzi project <create|list|current>")
+	return errors.New("usage: yanzi project <use|current>")
 }
 
 func openLocalProjectDB(ctx context.Context, cfg config.Config) (*sql.DB, func() error, error) {

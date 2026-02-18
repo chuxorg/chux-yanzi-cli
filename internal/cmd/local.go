@@ -18,10 +18,9 @@ import (
 )
 
 const (
-	localMigrationsDir  = "migrations"
-	localMigrationName  = "0001_init.sql"
-	localProjectName    = "0002_projects.sql"
-	localCheckpointName = "0003_checkpoints.sql"
+	localMigrationsDir = "migrations"
+	localMigrationName = "0001_init.sql"
+	localProjectName   = "0002_projects.sql"
 )
 
 const localMigrationSQL = `CREATE TABLE IF NOT EXISTS intents (
@@ -50,19 +49,6 @@ const localProjectMigrationSQL = `CREATE TABLE IF NOT EXISTS projects (
 
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_prev_hash ON projects (prev_hash);
-`
-
-const localCheckpointMigrationSQL = `CREATE TABLE IF NOT EXISTS checkpoints (
-	hash TEXT PRIMARY KEY,
-	project TEXT NOT NULL,
-	summary TEXT NOT NULL,
-	created_at TEXT NOT NULL,
-	artifact_ids TEXT NOT NULL,
-	previous_checkpoint_id TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_checkpoints_project_created_at ON checkpoints (project, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_checkpoints_previous_id ON checkpoints (previous_checkpoint_id);
 `
 
 func openLocalStore(ctx context.Context, cfg config.Config) (*store.Store, error) {
@@ -128,9 +114,8 @@ func ensureLocalMigrations(stateDir string) error {
 		return fmt.Errorf("create migrations dir: %w", err)
 	}
 	migrations := map[string]string{
-		localMigrationName:  localMigrationSQL,
-		localProjectName:    localProjectMigrationSQL,
-		localCheckpointName: localCheckpointMigrationSQL,
+		localMigrationName: localMigrationSQL,
+		localProjectName:   localProjectMigrationSQL,
 	}
 	for name, contents := range migrations {
 		file := filepath.Join(path, name)

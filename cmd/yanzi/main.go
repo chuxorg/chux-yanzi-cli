@@ -43,6 +43,8 @@ func main() {
 		err = cmd.RunShow(os.Args[2:])
 	case "mode":
 		err = cmd.RunMode(os.Args[2:])
+	case "project":
+		err = cmd.RunProject(os.Args[2:])
 	case "version":
 		if err := printVersion(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -71,6 +73,7 @@ commands:
   list     List intent records.
   show     Show intent details by id.
   mode     Show or set runtime mode (local | http).
+  project  Manage projects.
   version  Print the CLI version.
 
 capture args:
@@ -104,6 +107,11 @@ mode args:
   local                  Set mode to local.
   http                   Set mode to http.
 
+project args:
+  create <name> [--description "..."]  Create a project.
+  list                                 List projects.
+  current                              Show the active project.
+
 notes:
   mode set to http does not start libraryd.
 
@@ -117,6 +125,9 @@ examples:
   yanzi mode
   yanzi mode local
   yanzi mode http
+  yanzi project create "alpha" --description "First project"
+  yanzi project list
+  yanzi project current
   yanzi version`)
 }
 

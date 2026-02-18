@@ -4,8 +4,12 @@ go 1.24.0
 
 require (
 	github.com/chuxorg/chux-yanzi-core v0.0.0-20260214161101-b6a347b4c093
+	github.com/chuxorg/yanzi-library v0.0.0-20260218085019-addcf9eaffa5
 	gopkg.in/yaml.v3 v3.0.1
+	modernc.org/sqlite v1.45.0
 )
+
+replace github.com/chuxorg/yanzi-library => /Users/developer/projects/chuxorg/chux-yanzi-library
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -18,5 +22,4 @@ require (
 	modernc.org/libc v1.67.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.45.0 // indirect
 )

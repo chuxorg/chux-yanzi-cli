@@ -18,8 +18,10 @@ import (
 )
 
 const (
-	localMigrationsDir = "migrations"
-	localMigrationName = "0001_init.sql"
+	localMigrationsDir  = "migrations"
+	localMigrationName  = "0001_init.sql"
+	localProjectName    = "0002_projects.sql"
+	localCheckpointName = "0003_checkpoints.sql"
 )
 
 const localMigrationSQL = `CREATE TABLE IF NOT EXISTS intents (
@@ -36,6 +38,31 @@ const localMigrationSQL = `CREATE TABLE IF NOT EXISTS intents (
 );
 CREATE INDEX IF NOT EXISTS idx_intents_hash ON intents(hash);
 CREATE INDEX IF NOT EXISTS idx_intents_created_at ON intents(created_at);
+`
+
+const localProjectMigrationSQL = `CREATE TABLE IF NOT EXISTS projects (
+	name TEXT PRIMARY KEY,
+	description TEXT,
+	created_at TEXT NOT NULL,
+	prev_hash TEXT,
+	hash TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_prev_hash ON projects (prev_hash);
+`
+
+const localCheckpointMigrationSQL = `CREATE TABLE IF NOT EXISTS checkpoints (
+	hash TEXT PRIMARY KEY,
+	project TEXT NOT NULL,
+	summary TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	artifact_ids TEXT NOT NULL,
+	previous_checkpoint_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_checkpoints_project_created_at ON checkpoints (project, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_previous_id ON checkpoints (previous_checkpoint_id);
 `
 
 func openLocalStore(ctx context.Context, cfg config.Config) (*store.Store, error) {
@@ -65,19 +92,56 @@ func openLocalStore(ctx context.Context, cfg config.Config) (*store.Store, error
 	return st, nil
 }
 
+func openSQLiteDB(path string) (*sql.DB, error) {
+	if path == "" {
+		return nil, errors.New("sqlite path is required")
+	}
+
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	if _, err := db.Exec(`PRAGMA foreign_keys=ON;`); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	if _, err := db.Exec(`PRAGMA busy_timeout=5000;`); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	return db, nil
+}
+
 func ensureLocalMigrations(stateDir string) error {
 	path := filepath.Join(stateDir, localMigrationsDir)
 	if err := os.MkdirAll(path, 0o700); err != nil {
 		return fmt.Errorf("create migrations dir: %w", err)
 	}
-	file := filepath.Join(path, localMigrationName)
-	if _, err := os.Stat(file); err == nil {
-		return nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("stat migration: %w", err)
+	migrations := map[string]string{
+		localMigrationName:  localMigrationSQL,
+		localProjectName:    localProjectMigrationSQL,
+		localCheckpointName: localCheckpointMigrationSQL,
 	}
-	if err := os.WriteFile(file, []byte(localMigrationSQL), 0o644); err != nil {
-		return fmt.Errorf("write migration: %w", err)
+	for name, contents := range migrations {
+		file := filepath.Join(path, name)
+		if _, err := os.Stat(file); err == nil {
+			continue
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("stat migration: %w", err)
+		}
+		if err := os.WriteFile(file, []byte(contents), 0o644); err != nil {
+			return fmt.Errorf("write migration: %w", err)
+		}
 	}
 	return nil
 }

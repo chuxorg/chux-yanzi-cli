@@ -43,6 +43,8 @@ func main() {
 		err = cmd.RunShow(os.Args[2:])
 	case "mode":
 		err = cmd.RunMode(os.Args[2:])
+	case "checkpoint":
+		err = cmd.RunCheckpoint(os.Args[2:])
 	case "version":
 		if err := printVersion(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -71,6 +73,7 @@ commands:
   list     List intent records.
   show     Show intent details by id.
   mode     Show or set runtime mode (local | http).
+  checkpoint  Manage checkpoints.
   version  Print the CLI version.
 
 capture args:
@@ -104,6 +107,10 @@ mode args:
   local                  Set mode to local.
   http                   Set mode to http.
 
+checkpoint args:
+  create --summary "..." Create a checkpoint for the active project.
+  list                   List checkpoints for the active project.
+
 notes:
   mode set to http does not start libraryd.
 
@@ -117,6 +124,8 @@ examples:
   yanzi mode
   yanzi mode local
   yanzi mode http
+  yanzi checkpoint create --summary "Weekly snapshot"
+  yanzi checkpoint list
   yanzi version`)
 }
 

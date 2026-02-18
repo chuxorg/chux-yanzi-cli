@@ -96,6 +96,14 @@ func RunCapture(args []string) error {
 	if err != nil {
 		return err
 	}
+	activeProject, err := loadActiveProject()
+	if err != nil {
+		return err
+	}
+	meta, err = attachProjectMeta(meta, activeProject)
+	if err != nil {
+		return err
+	}
 
 	cfg, err := config.Load()
 	if err != nil {

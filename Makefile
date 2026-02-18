@@ -1,4 +1,4 @@
-.PHONY: build run
+.PHONY: build run test
 
 
 build:
@@ -8,6 +8,5 @@ build:
 run:
 	go run ./cmd/yanzi $(ARGS)
 
-sanity:
-   
-   
+test:
+	go test ./...

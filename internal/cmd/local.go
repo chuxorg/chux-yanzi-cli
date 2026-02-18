@@ -113,12 +113,10 @@ func ensureLocalMigrations(stateDir string) error {
 	if err := os.MkdirAll(path, 0o700); err != nil {
 		return fmt.Errorf("create migrations dir: %w", err)
 	}
-
 	migrations := map[string]string{
 		localMigrationName: localMigrationSQL,
 		localProjectName:   localProjectMigrationSQL,
 	}
-
 	for name, contents := range migrations {
 		file := filepath.Join(path, name)
 		if _, err := os.Stat(file); err == nil {

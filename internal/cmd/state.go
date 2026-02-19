@@ -21,10 +21,31 @@ func loadActiveProject() (string, error) {
 		return "", err
 	}
 
+	project, err := readActiveProject(path)
+	if err == nil {
+		return project, nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("resolve working dir: %w", err)
+	}
+	fallback := filepath.Join(wd, ".yanzi", "state.json")
+	project, err = readActiveProject(fallback)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	return project, err
+}
+
+func readActiveProject(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return "", nil
+			return "", os.ErrNotExist
 		}
 		return "", fmt.Errorf("read state file: %w", err)
 	}
@@ -36,7 +57,6 @@ func loadActiveProject() (string, error) {
 	if err := json.Unmarshal(data, &state); err != nil {
 		return "", fmt.Errorf("invalid state file: %w", err)
 	}
-
 	return strings.TrimSpace(state.ActiveProject), nil
 }
 

@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	"bytes"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -55,41 +51,4 @@ func TestRunProjectList(t *testing.T) {
 	if !strings.Contains(output, "alpha") {
 		t.Fatalf("expected project name in output, got %q", output)
 	}
-}
-
-func writeTestConfig(t *testing.T, home string) {
-	t.Helper()
-
-	stateDir := filepath.Join(home, ".yanzi")
-	if err := os.MkdirAll(stateDir, 0o700); err != nil {
-		t.Fatalf("create state dir: %v", err)
-	}
-	dbPath := filepath.Join(stateDir, "yanzi.db")
-	configPath := filepath.Join(stateDir, "config.yaml")
-	content := []byte("mode: local\ndb_path: " + dbPath + "\n")
-	if err := os.WriteFile(configPath, content, 0o600); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
-}
-
-func captureStdout(fn func() error) (string, error) {
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-
-	stdout := os.Stdout
-	os.Stdout = writer
-	defer func() {
-		os.Stdout = stdout
-	}()
-
-	runErr := fn()
-	_ = writer.Close()
-
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, reader)
-	_ = reader.Close()
-
-	return buf.String(), runErr
 }

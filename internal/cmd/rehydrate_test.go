@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -169,21 +167,6 @@ func openTestDB(t *testing.T, dir string) *sql.DB {
 	return db
 }
 
-func seedProject(t *testing.T, db *sql.DB, name string) {
-	t.Helper()
-	_, err := db.Exec(
-		`INSERT INTO projects (name, description, created_at, prev_hash, hash) VALUES (?, ?, ?, ?, ?)`,
-		name,
-		nil,
-		"2025-01-01T00:00:00Z",
-		nil,
-		"seed-hash",
-	)
-	if err != nil {
-		t.Fatalf("seed project: %v", err)
-	}
-}
-
 func seedCheckpoint(t *testing.T, db *sql.DB, project, createdAt, summary string) {
 	t.Helper()
 	checkpoint := yanzilibrary.Checkpoint{
@@ -256,22 +239,6 @@ func seedIntent(t *testing.T, db *sql.DB, id, createdAt, project string) {
 	}
 }
 
-func writeStateFile(t *testing.T, dir, project string) {
-	t.Helper()
-	path := filepath.Join(dir, ".yanzi", "state.json")
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		t.Fatalf("create state dir: %v", err)
-	}
-	payload := map[string]string{"active_project": project}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		t.Fatalf("encode state: %v", err)
-	}
-	if err := os.WriteFile(path, append(data, '\n'), 0o600); err != nil {
-		t.Fatalf("write state file: %v", err)
-	}
-}
-
 func withCwd(t *testing.T, dir string) {
 	t.Helper()
 	wd, err := os.Getwd()
@@ -286,26 +253,4 @@ func withCwd(t *testing.T, dir string) {
 			t.Fatalf("restore wd: %v", err)
 		}
 	})
-}
-
-func captureStdout(fn func() error) (string, error) {
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-
-	stdout := os.Stdout
-	os.Stdout = writer
-	defer func() {
-		os.Stdout = stdout
-	}()
-
-	runErr := fn()
-	_ = writer.Close()
-
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, reader)
-	_ = reader.Close()
-
-	return buf.String(), runErr
 }

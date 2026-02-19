@@ -9,8 +9,6 @@ require (
 	modernc.org/sqlite v1.45.0
 )
 
-replace github.com/chuxorg/yanzi-library => /Users/developer/projects/chuxorg/chux-yanzi-library
-
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect

@@ -1,60 +1,80 @@
-# Yanzi CLI
+# Yanzi
 
-## What It Is
-Command-line interface for interacting with Yanzi Library.
+Yanzi is a local workflow state manager for AI-assisted development that enables deterministic resume via projects and checkpoints.
 
-## Install
-For the simplest install, see:
-https://github.com/chuxorg/yanzi
+## Why Yanzi
+- AI sessions are ephemeral
+- Context grows and becomes noisy
+- Rehydration is unreliable
+- Yanzi provides deterministic resume
 
-(Development users can build from source with Go.)
+## Capabilities
+- Global CLI install with `go install github.com/chuxorg/chux-yanzi-cli/cmd/yanzi@latest`.
+- Project primitive: `yanzi project create <name>`, `yanzi project use <name>`, `yanzi project list`, `yanzi project current`.
+- Active project context stored in `.yanzi/state.json`.
+- Capture primitive: `yanzi capture --prompt ... --response ...` (project metadata auto-attached when active; `--author` is required).
+- Checkpoint primitive: `yanzi checkpoint create --summary "..."`, `yanzi checkpoint list`.
+- Deterministic resume: `yanzi rehydrate`.
+- Immutable artifact storage with deterministic hashing and an append-only ledger.
+- Unit-tested primitives.
+
+## Installation
+```sh
+go install github.com/chuxorg/chux-yanzi-cli/cmd/yanzi@latest
+```
+
+If you already have the repo checked out:
+```sh
+go install ./cmd/yanzi
+```
 
 ## Quick Start
 ```sh
-yanzi capture --author "Ada" --prompt-file prompt.txt --response-file response.txt
-yanzi verify <id>
-yanzi chain <id>
+yanzi project create MyProject
+yanzi project use MyProject
+yanzi capture --prompt "Build landing page" --response "..."
+yanzi checkpoint create --summary "Initial layout complete"
+yanzi rehydrate
 ```
 
-## Commands
-- `capture`: Create a new intent record via the library API.
-- `verify`: Verify an intent by id.
-- `chain`: Print an intent chain by id.
+- `yanzi project create` creates a project record.
+- `yanzi project use` sets the active project in `.yanzi/state.json`.
+- `yanzi capture` stores the prompt/response and attaches active project metadata. Add `--author` when running this command.
+- `yanzi checkpoint create` saves a checkpoint for the active project.
+- `yanzi rehydrate` prints the latest checkpoint and artifacts since.
 
-## Runtime Modes
-Yanzi CLI supports two runtime modes selected via `~/.yanzi/config.yaml`.
+## Typical Workflow
+- Build a feature and capture key prompts/responses.
+- Create a checkpoint when a milestone is reached.
+- Restart your AI session.
+- Run `yanzi rehydrate` to load the latest checkpoint and artifacts since.
+- Continue work with deterministic context.
 
-- Local mode (default): Embedded SQLite storage on the same machine.
-- HTTP mode (optional): Remote library server over HTTP.
+## Using Yanzi with AI Coding Agents
+```text
+You are an AI coding agent with shell access.
 
-If the config file is missing, the CLI defaults to local mode. If `mode: http` is set and `base_url` is unreachable, the command fails. There is no automatic fallback.
+Before beginning development:
 
-| Use Case | Mode |
-|----------|------|
-| Personal dev, single machine | local |
-| Team server or shared ledger | http |
-| Offline capture | local |
-| Remote verification | http |
+1. Verify Yanzi is installed:
+   yanzi --version
 
-Example config file: `~/.yanzi/config.yaml`
+2. If not installed, install it using the documented method.
 
-Example local:
-```yaml
-mode: local
-db_path: ~/.yanzi/yanzi.db
+3. Create and activate a project:
+   yanzi project create <ProjectName>
+   yanzi project use <ProjectName>
+
+4. Persist all meaningful prompts and responses using:
+   yanzi capture
+
+5. When a milestone is reached:
+   yanzi checkpoint create --summary "..."
+
+6. If the session restarts:
+   yanzi rehydrate
+
+Yanzi must be treated as required workflow infrastructure.
+Do not proceed with development if it is unavailable.
+-----------------------------------------------------
 ```
-
-Example http:
-```yaml
-mode: http
-base_url: http://localhost:8080
-```
-
-## Philosophy
-- Thin client
-- Talks to library over HTTP
-- No embedded storage
-- No AI logic
-
-## Contributing
-Small disciplined scope. Major feature proposals require discussion first.

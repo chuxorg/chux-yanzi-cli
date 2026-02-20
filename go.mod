@@ -3,14 +3,14 @@ module github.com/chuxorg/chux-yanzi-cli
 go 1.24.0
 
 require (
-	github.com/chuxorg/chux-yanzi-core v0.0.0-20260214161101-b6a347b4c093
+	github.com/chuxorg/chux-yanzi-core v1.0.12-qa
 	github.com/chuxorg/yanzi-library v0.0.0-20260218083015-9e430e78fb2c
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.45.0
 )
 
 require (
-	github.com/chuxorg/chux-yanzi-library v0.0.0-20260218083015-9e430e78fb2c // indirect
+	github.com/chuxorg/chux-yanzi-library v1.0.13-qa // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -1,17 +1,9 @@
-## Description
+## PR Checklist
 
-Describe the changes and why they are needed.
-
-## Type of Change
-
-* Bug fix
-* New feature
-* Documentation update
-* Refactor
-* Other
-
-## Checklist
-
-* Tests updated where applicable
-* Documentation updated
-* No unrelated changes included
+- [ ] Work completed on feature branch
+- [ ] No replace directives
+- [ ] go mod tidy clean
+- [ ] go build succeeds
+- [ ] go test succeeds
+- [ ] Target branch is correct (development or master)
+- [ ] RELEASE_PROTOCOL.md followed

@@ -22,9 +22,9 @@ jobs:
         run: |
           mkdir -p dist
           VERSION=${GITHUB_REF_NAME}
-          GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/chuxorg/chux-yanzi-cli.version=$VERSION" -o dist/yanzi-linux-amd64 ./cmd/yanzi
-          GOOS=darwin GOARCH=amd64 go build -ldflags "-X github.com/chuxorg/chux-yanzi-cli.version=$VERSION" -o dist/yanzi-darwin-amd64 ./cmd/yanzi
-          GOOS=darwin GOARCH=arm64 go build -ldflags "-X github.com/chuxorg/chux-yanzi-cli.version=$VERSION" -o dist/yanzi-darwin-arm64 ./cmd/yanzi
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o dist/yanzi-linux-amd64 ./cmd/yanzi
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o dist/yanzi-darwin-amd64 ./cmd/yanzi
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=$VERSION" -o dist/yanzi-darwin-arm64 ./cmd/yanzi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

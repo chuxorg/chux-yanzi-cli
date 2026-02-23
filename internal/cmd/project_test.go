@@ -17,8 +17,8 @@ func TestRunProjectCreate(t *testing.T) {
 		t.Fatalf("RunProject create: %v", err)
 	}
 
-	if !strings.Contains(output, "hash: ") {
-		t.Fatalf("expected hash output, got %q", output)
+	if !strings.Contains(output, "created_at: ") {
+		t.Fatalf("expected created_at output, got %q", output)
 	}
 	if !strings.Contains(output, "Project created.") {
 		t.Fatalf("expected confirmation output, got %q", output)

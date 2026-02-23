@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/config"
 	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
@@ -67,21 +68,16 @@ func runProjectCreate(args []string) error {
 
 	switch cfg.Mode {
 	case config.ModeLocal:
-		ctx := context.Background()
-		db, closeFn, err := openLocalProjectDB(ctx, cfg)
-		if err != nil {
-			return err
+		if err := os.Setenv("YANZI_DB_PATH", cfg.DBPath); err != nil {
+			return fmt.Errorf("set YANZI_DB_PATH: %w", err)
 		}
-		defer func() {
-			_ = closeFn()
-		}()
 
-		project, err := yanzilibrary.CreateProject(ctx, db, name, description)
+		project, err := yanzilibrary.CreateProject(name, description)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("hash: %s\n", project.Hash)
+		fmt.Printf("created_at: %s\n", project.CreatedAt.Format(time.RFC3339Nano))
 		fmt.Println("Project created.")
 		return nil
 	case config.ModeHTTP:
@@ -108,23 +104,18 @@ func runProjectList(args []string) error {
 
 	switch cfg.Mode {
 	case config.ModeLocal:
-		ctx := context.Background()
-		db, closeFn, err := openLocalProjectDB(ctx, cfg)
-		if err != nil {
-			return err
+		if err := os.Setenv("YANZI_DB_PATH", cfg.DBPath); err != nil {
+			return fmt.Errorf("set YANZI_DB_PATH: %w", err)
 		}
-		defer func() {
-			_ = closeFn()
-		}()
 
-		projects, err := yanzilibrary.ListProjects(ctx, db)
+		projects, err := yanzilibrary.ListProjects()
 		if err != nil {
 			return err
 		}
 
 		fmt.Println("Name\tCreatedAt\tDescription")
 		for _, project := range projects {
-			fmt.Printf("%s\t%s\t%s\n", project.Name, project.CreatedAt, project.Description)
+			fmt.Printf("%s\t%s\t%s\n", project.Name, project.CreatedAt.Format(time.RFC3339Nano), project.Description)
 		}
 		return nil
 	case config.ModeHTTP:
@@ -147,16 +138,11 @@ func runProjectUse(args []string) error {
 
 	switch cfg.Mode {
 	case config.ModeLocal:
-		ctx := context.Background()
-		db, closeFn, err := openLocalProjectDB(ctx, cfg)
-		if err != nil {
-			return err
+		if err := os.Setenv("YANZI_DB_PATH", cfg.DBPath); err != nil {
+			return fmt.Errorf("set YANZI_DB_PATH: %w", err)
 		}
-		defer func() {
-			_ = closeFn()
-		}()
 
-		projects, err := yanzilibrary.ListProjects(ctx, db)
+		projects, err := yanzilibrary.ListProjects()
 		if err != nil {
 			return err
 		}

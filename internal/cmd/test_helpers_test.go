@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -54,16 +53,11 @@ func createTestProject(t *testing.T, name string) {
 	if err != nil {
 		t.Fatalf("load config: %v", err)
 	}
-	ctx := context.Background()
-	db, closeFn, err := openLocalProjectDB(ctx, cfg)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
+	if err := os.Setenv("YANZI_DB_PATH", cfg.DBPath); err != nil {
+		t.Fatalf("set YANZI_DB_PATH: %v", err)
 	}
-	defer func() {
-		_ = closeFn()
-	}()
 
-	if _, err := yanzilibrary.CreateProject(ctx, db, name, ""); err != nil {
+	if _, err := yanzilibrary.CreateProject(name, ""); err != nil {
 		t.Fatalf("create project: %v", err)
 	}
 }

@@ -47,6 +47,7 @@ const (
 
 func TestRehydrateWithArtifacts(t *testing.T) {
 	workdir := t.TempDir()
+	t.Setenv("HOME", workdir)
 	withCwd(t, workdir)
 	writeStateFile(t, workdir, "alpha")
 	db := openTestDB(t, workdir)
@@ -97,6 +98,7 @@ func TestRehydrateWithArtifacts(t *testing.T) {
 
 func TestRehydrateNoArtifacts(t *testing.T) {
 	workdir := t.TempDir()
+	t.Setenv("HOME", workdir)
 	withCwd(t, workdir)
 	writeStateFile(t, workdir, "alpha")
 	db := openTestDB(t, workdir)
@@ -118,6 +120,7 @@ func TestRehydrateNoArtifacts(t *testing.T) {
 
 func TestRehydrateNoActiveProject(t *testing.T) {
 	workdir := t.TempDir()
+	t.Setenv("HOME", workdir)
 	withCwd(t, workdir)
 
 	err := RunRehydrate([]string{})
@@ -131,6 +134,7 @@ func TestRehydrateNoActiveProject(t *testing.T) {
 
 func TestRehydrateNoCheckpoint(t *testing.T) {
 	workdir := t.TempDir()
+	t.Setenv("HOME", workdir)
 	withCwd(t, workdir)
 	writeStateFile(t, workdir, "alpha")
 	db := openTestDB(t, workdir)
@@ -151,6 +155,7 @@ func openTestDB(t *testing.T, dir string) *sql.DB {
 	t.Helper()
 
 	path := filepath.Join(dir, "yanzi-library.db")
+	t.Setenv("YANZI_DB_PATH", path)
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("open db: %v", err)

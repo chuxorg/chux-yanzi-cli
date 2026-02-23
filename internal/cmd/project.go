@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/config"
-	yanzilibrary "github.com/chuxorg/yanzi-library"
+	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
 )
 
 // RunProject handles project subcommands.

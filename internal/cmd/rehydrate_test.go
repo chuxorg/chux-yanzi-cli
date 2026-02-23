@@ -11,7 +11,7 @@ import (
 
 	"github.com/chuxorg/chux-yanzi-core/hash"
 	"github.com/chuxorg/chux-yanzi-core/model"
-	yanzilibrary "github.com/chuxorg/yanzi-library"
+	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
 	_ "modernc.org/sqlite"
 )
 

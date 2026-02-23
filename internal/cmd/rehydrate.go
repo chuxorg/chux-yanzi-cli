@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	yanzilibrary "github.com/chuxorg/yanzi-library"
+	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
 )
 
 // RunRehydrate renders the latest checkpoint and artifacts since.
@@ -24,8 +24,7 @@ func RunRehydrate(args []string) error {
 
 	payload, err := yanzilibrary.RehydrateProject(project)
 	if err != nil {
-		var notFound yanzilibrary.CheckpointNotFoundError
-		if errors.As(err, &notFound) {
+		if errors.Is(err, yanzilibrary.ErrCheckpointNotFound) {
 			return errors.New("no checkpoint found for active project")
 		}
 		return err

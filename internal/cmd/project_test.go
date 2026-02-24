@@ -11,16 +11,13 @@ func TestRunProjectCreate(t *testing.T) {
 	writeTestConfig(t, home)
 
 	output, err := captureStdout(func() error {
-		return RunProject([]string{"create", "alpha", "--description", "first project"})
+		return RunProject([]string{"create", "alpha"})
 	})
 	if err != nil {
 		t.Fatalf("RunProject create: %v", err)
 	}
 
-	if !strings.Contains(output, "created_at: ") {
-		t.Fatalf("expected created_at output, got %q", output)
-	}
-	if !strings.Contains(output, "Project created.") {
+	if !strings.Contains(output, "Project created: alpha") {
 		t.Fatalf("expected confirmation output, got %q", output)
 	}
 }
@@ -30,7 +27,7 @@ func TestRunProjectList(t *testing.T) {
 	t.Setenv("HOME", home)
 	writeTestConfig(t, home)
 
-	if err := RunProject([]string{"create", "alpha", "--description", "first project"}); err != nil {
+	if err := RunProject([]string{"create", "alpha"}); err != nil {
 		t.Fatalf("RunProject create: %v", err)
 	}
 
@@ -50,5 +47,23 @@ func TestRunProjectList(t *testing.T) {
 	}
 	if !strings.Contains(output, "alpha") {
 		t.Fatalf("expected project name in output, got %q", output)
+	}
+}
+
+func TestRunProjectCreateDuplicate(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeTestConfig(t, home)
+
+	if err := RunProject([]string{"create", "alpha"}); err != nil {
+		t.Fatalf("initial create failed: %v", err)
+	}
+
+	err := RunProject([]string{"create", "alpha"})
+	if err == nil {
+		t.Fatal("expected duplicate project error")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "already exists") {
+		t.Fatalf("expected clear duplicate error, got %v", err)
 	}
 }

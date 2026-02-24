@@ -114,8 +114,10 @@ mode args:
   http                   Set mode to http.
 
 project args:
-  use <name>             Set the active project.
+  create <name>         Create a new project.
+  use <name>            Set the active project.
   current               Show the active project.
+  list                  List projects.
 
 checkpoint args:
   create --summary "..." Create a checkpoint for the active project.
@@ -137,8 +139,10 @@ examples:
   yanzi mode
   yanzi mode local
   yanzi mode http
+  yanzi project create "alpha"
   yanzi project use "alpha"
   yanzi project current
+  yanzi project list
   yanzi checkpoint create --summary "Weekly snapshot"
   yanzi checkpoint list
   yanzi rehydrate

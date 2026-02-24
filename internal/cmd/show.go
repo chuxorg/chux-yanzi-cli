@@ -42,13 +42,13 @@ func RunShow(args []string) error {
 		intent = record
 	case config.ModeLocal:
 		ctx := context.Background()
-		store, err := openLocalStore(ctx, cfg)
+		db, err := openLocalDB(cfg)
 		if err != nil {
 			return err
 		}
-		defer store.Close()
+		defer db.Close()
 
-		record, err := getLocalIntent(ctx, store, id)
+		record, err := getLocalIntent(ctx, db, id)
 		if err != nil {
 			return err
 		}

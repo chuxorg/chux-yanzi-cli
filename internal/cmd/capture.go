@@ -140,17 +140,17 @@ func RunCapture(args []string) error {
 		}
 	case config.ModeLocal:
 		ctx := context.Background()
-		store, err := openLocalStore(ctx, cfg)
+		db, err := openLocalDB(cfg)
 		if err != nil {
 			return err
 		}
-		defer store.Close()
+		defer db.Close()
 
 		record, err := buildLocalIntent(input)
 		if err != nil {
 			return err
 		}
-		if err := store.CreateIntent(ctx, record); err != nil {
+		if err := createLocalIntent(ctx, db, record); err != nil {
 			return err
 		}
 		intent = record

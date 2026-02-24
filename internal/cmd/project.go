@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,30 +37,12 @@ func RunProject(args []string) error {
 }
 
 func runProjectCreate(args []string) error {
-	description := ""
-	name := ""
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch {
-		case arg == "--description":
-			if i+1 >= len(args) {
-				return errors.New("usage: yanzi project create <name> [--description \"...\"]")
-			}
-			description = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--description="):
-			description = strings.TrimPrefix(arg, "--description=")
-		case strings.HasPrefix(arg, "--"):
-			return fmt.Errorf("unknown flag: %s", arg)
-		default:
-			if name != "" {
-				return errors.New("usage: yanzi project create <name> [--description \"...\"]")
-			}
-			name = arg
-		}
+	if len(args) != 1 {
+		return errors.New("usage: yanzi project create <name>")
 	}
+	name := strings.TrimSpace(args[0])
 	if name == "" {
-		return errors.New("usage: yanzi project create <name> [--description \"...\"]")
+		return errors.New("usage: yanzi project create <name>")
 	}
 
 	cfg, err := config.Load()
@@ -68,17 +52,18 @@ func runProjectCreate(args []string) error {
 
 	switch cfg.Mode {
 	case config.ModeLocal:
-		if err := os.Setenv("YANZI_DB_PATH", cfg.DBPath); err != nil {
-			return fmt.Errorf("set YANZI_DB_PATH: %w", err)
+		db, err := openLocalDB(cfg)
+		if err != nil {
+			return err
 		}
+		defer db.Close()
 
-		project, err := yanzilibrary.CreateProject(name, description)
+		project, err := createProjectLocal(context.Background(), db, name)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("created_at: %s\n", project.CreatedAt.Format(time.RFC3339Nano))
-		fmt.Println("Project created.")
+		fmt.Printf("Project created: %s\n", project.Name)
 		return nil
 	case config.ModeHTTP:
 		return errors.New("project commands are not available in http mode")
@@ -104,11 +89,13 @@ func runProjectList(args []string) error {
 
 	switch cfg.Mode {
 	case config.ModeLocal:
-		if err := os.Setenv("YANZI_DB_PATH", cfg.DBPath); err != nil {
-			return fmt.Errorf("set YANZI_DB_PATH: %w", err)
+		db, err := openLocalDB(cfg)
+		if err != nil {
+			return err
 		}
+		defer db.Close()
 
-		projects, err := yanzilibrary.ListProjects()
+		projects, err := listProjectsLocal(context.Background(), db)
 		if err != nil {
 			return err
 		}
@@ -138,11 +125,13 @@ func runProjectUse(args []string) error {
 
 	switch cfg.Mode {
 	case config.ModeLocal:
-		if err := os.Setenv("YANZI_DB_PATH", cfg.DBPath); err != nil {
-			return fmt.Errorf("set YANZI_DB_PATH: %w", err)
+		db, err := openLocalDB(cfg)
+		if err != nil {
+			return err
 		}
+		defer db.Close()
 
-		projects, err := yanzilibrary.ListProjects()
+		projects, err := listProjectsLocal(context.Background(), db)
 		if err != nil {
 			return err
 		}
@@ -193,18 +182,83 @@ func projectUsageError() error {
 	return errors.New("usage: yanzi project <create|list|use|current>")
 }
 
-func openLocalProjectDB(ctx context.Context, cfg config.Config) (*sql.DB, func() error, error) {
-	st, err := openLocalStore(ctx, cfg)
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := st.Close(); err != nil {
-		return nil, nil, err
+func createProjectLocal(ctx context.Context, db *sql.DB, name string) (yanzilibrary.Project, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return yanzilibrary.Project{}, errors.New("project name is required")
 	}
 
-	db, err := openSQLiteDB(cfg.DBPath)
-	if err != nil {
-		return nil, nil, err
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(1) FROM projects WHERE name = ?`, name).Scan(&count); err != nil {
+		return yanzilibrary.Project{}, err
 	}
-	return db, db.Close, nil
+	if count > 0 {
+		return yanzilibrary.Project{}, fmt.Errorf("project already exists: %s", name)
+	}
+
+	createdAt := time.Now().UTC()
+	createdAtText := createdAt.Format(time.RFC3339Nano)
+	description := ""
+	hash := hashProjectRecord(name, description, createdAtText)
+	if _, err := db.ExecContext(
+		ctx,
+		`INSERT INTO projects (name, description, created_at, prev_hash, hash) VALUES (?, ?, ?, ?, ?)`,
+		name,
+		description,
+		createdAtText,
+		nil,
+		hash,
+	); err != nil {
+		if isProjectUniqueViolation(err) {
+			return yanzilibrary.Project{}, fmt.Errorf("project already exists: %s", name)
+		}
+		return yanzilibrary.Project{}, err
+	}
+	return yanzilibrary.Project{
+		Name:        name,
+		Description: description,
+		CreatedAt:   createdAt,
+	}, nil
+}
+
+func listProjectsLocal(ctx context.Context, db *sql.DB) ([]yanzilibrary.Project, error) {
+	rows, err := db.QueryContext(ctx, `SELECT name, description, created_at FROM projects ORDER BY created_at ASC, name ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	projects := make([]yanzilibrary.Project, 0)
+	for rows.Next() {
+		var project yanzilibrary.Project
+		var description sql.NullString
+		var createdAtText string
+		if err := rows.Scan(&project.Name, &description, &createdAtText); err != nil {
+			return nil, err
+		}
+		if description.Valid {
+			project.Description = description.String
+		}
+		project.CreatedAt, err = time.Parse(time.RFC3339Nano, createdAtText)
+		if err != nil {
+			return nil, fmt.Errorf("parse project created_at for %s: %w", project.Name, err)
+		}
+		projects = append(projects, project)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return projects, nil
+}
+
+func hashProjectRecord(name, description, createdAt string) string {
+	sum := sha256.Sum256([]byte(name + "\n" + description + "\n" + createdAt))
+	return hex.EncodeToString(sum[:])
+}
+
+func isProjectUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "unique")
 }

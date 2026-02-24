@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -191,20 +189,4 @@ func runProjectCurrent(args []string) error {
 
 func projectUsageError() error {
 	return errors.New("usage: yanzi project <create|list|use|current>")
-}
-
-func openLocalProjectDB(ctx context.Context, cfg config.Config) (*sql.DB, func() error, error) {
-	st, err := openLocalStore(ctx, cfg)
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := st.Close(); err != nil {
-		return nil, nil, err
-	}
-
-	db, err := openSQLiteDB(cfg.DBPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	return db, db.Close, nil
 }

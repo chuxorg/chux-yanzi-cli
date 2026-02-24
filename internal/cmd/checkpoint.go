@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -58,13 +57,11 @@ func runCheckpointCreate(args []string) error {
 	switch cfg.Mode {
 	case config.ModeLocal:
 		ctx := context.Background()
-		db, closeFn, err := openLocalCheckpointDB(ctx, cfg)
+		db, err := openLocalDB(cfg)
 		if err != nil {
 			return err
 		}
-		defer func() {
-			_ = closeFn()
-		}()
+		defer db.Close()
 
 		checkpoint, err := yanzilibrary.CreateCheckpoint(ctx, db, project, *summary, []string{})
 		if err != nil {
@@ -107,13 +104,11 @@ func runCheckpointList(args []string) error {
 	switch cfg.Mode {
 	case config.ModeLocal:
 		ctx := context.Background()
-		db, closeFn, err := openLocalCheckpointDB(ctx, cfg)
+		db, err := openLocalDB(cfg)
 		if err != nil {
 			return err
 		}
-		defer func() {
-			_ = closeFn()
-		}()
+		defer db.Close()
 
 		checkpoints, err := yanzilibrary.ListCheckpoints(ctx, db, project)
 		if err != nil {
@@ -134,20 +129,4 @@ func runCheckpointList(args []string) error {
 
 func checkpointUsageError() error {
 	return errors.New("usage: yanzi checkpoint <create|list>")
-}
-
-func openLocalCheckpointDB(ctx context.Context, cfg config.Config) (*sql.DB, func() error, error) {
-	st, err := openLocalStore(ctx, cfg)
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := st.Close(); err != nil {
-		return nil, nil, err
-	}
-
-	db, err := openSQLiteDB(cfg.DBPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	return db, db.Close, nil
 }

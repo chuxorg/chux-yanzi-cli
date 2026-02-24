@@ -95,13 +95,11 @@ func createTestCheckpoint(t *testing.T, project, summary string) {
 		t.Fatalf("load config: %v", err)
 	}
 	ctx := context.Background()
-	db, closeFn, err := openLocalCheckpointDB(ctx, cfg)
+	db, err := openLocalDB(cfg)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	defer func() {
-		_ = closeFn()
-	}()
+	defer db.Close()
 
 	if _, err := yanzilibrary.CreateCheckpoint(ctx, db, project, summary, []string{}); err != nil {
 		t.Fatalf("create checkpoint: %v", err)

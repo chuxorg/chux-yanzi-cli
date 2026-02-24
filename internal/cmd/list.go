@@ -40,13 +40,13 @@ func RunList(args []string) error {
 		intents = resp.Intents
 	case config.ModeLocal:
 		ctx := context.Background()
-		store, err := openLocalStore(ctx, cfg)
+		db, err := openLocalDB(cfg)
 		if err != nil {
 			return err
 		}
-		defer store.Close()
+		defer db.Close()
 
-		localIntents, err := listLocalIntents(ctx, store, *author, *source, *limit, map[string]string(metaFilters))
+		localIntents, err := listLocalIntents(ctx, db, *author, *source, *limit, map[string]string(metaFilters))
 		if err != nil {
 			return err
 		}

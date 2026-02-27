@@ -43,6 +43,12 @@ func main() {
 		err = cmd.RunShow(os.Args[2:])
 	case "mode":
 		err = cmd.RunMode(os.Args[2:])
+	case "project":
+		err = cmd.RunProject(os.Args[2:])
+	case "checkpoint":
+		err = cmd.RunCheckpoint(os.Args[2:])
+	case "rehydrate":
+		err = cmd.RunRehydrate(os.Args[2:])
 	case "version":
 		if err := printVersion(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -71,6 +77,9 @@ commands:
   list     List intent records.
   show     Show intent details by id.
   mode     Show or set runtime mode (local | http).
+  project  Manage project context.
+  checkpoint  Manage checkpoints.
+  rehydrate  Rehydrate active project context.
   version  Print the CLI version.
 
 capture args:
@@ -104,6 +113,19 @@ mode args:
   local                  Set mode to local.
   http                   Set mode to http.
 
+project args:
+  create <name>         Create a new project.
+  use <name>            Set the active project.
+  current               Show the active project.
+  list                  List projects.
+
+checkpoint args:
+  create --summary "..." Create a checkpoint for the active project.
+  list                   List checkpoints for the active project.
+
+rehydrate args:
+  (no args)             Rehydrate the active project context.
+
 notes:
   mode set to http does not start libraryd.
 
@@ -117,6 +139,13 @@ examples:
   yanzi mode
   yanzi mode local
   yanzi mode http
+  yanzi project create "alpha"
+  yanzi project use "alpha"
+  yanzi project current
+  yanzi project list
+  yanzi checkpoint create --summary "Weekly snapshot"
+  yanzi checkpoint list
+  yanzi rehydrate
   yanzi version`)
 }
 

@@ -8,92 +8,23 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/config"
 	"github.com/chuxorg/chux-yanzi-core/hash"
 	"github.com/chuxorg/chux-yanzi-core/model"
 	"github.com/chuxorg/chux-yanzi-core/store"
+	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
 )
 
-const (
-	localMigrationsDir = "migrations"
-	localMigrationName = "0001_init.sql"
-)
-
-const localMigrationSQL = `CREATE TABLE IF NOT EXISTS intents (
-	id TEXT PRIMARY KEY,
-	created_at TEXT NOT NULL,
-	author TEXT NOT NULL,
-	source_type TEXT NOT NULL,
-	title TEXT,
-	prompt TEXT NOT NULL,
-	response TEXT NOT NULL,
-	meta TEXT,
-	prev_hash TEXT,
-	hash TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_intents_hash ON intents(hash);
-CREATE INDEX IF NOT EXISTS idx_intents_created_at ON intents(created_at);
-`
-
-func openLocalStore(ctx context.Context, cfg config.Config) (*store.Store, error) {
+func openLocalDB(cfg config.Config) (*sql.DB, error) {
 	if cfg.DBPath == "" {
 		return nil, errors.New("db_path is required when mode=local")
 	}
-	dir := filepath.Dir(cfg.DBPath)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, fmt.Errorf("create db dir: %w", err)
+	if err := os.Setenv("YANZI_DB_PATH", cfg.DBPath); err != nil {
+		return nil, fmt.Errorf("set YANZI_DB_PATH: %w", err)
 	}
-	if err := ensureLocalMigrations(dir); err != nil {
-		return nil, err
-	}
-
-	st, err := store.Open(cfg.DBPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := withDir(dir, func() error {
-		return st.Migrate(ctx)
-	}); err != nil {
-		_ = st.Close()
-		return nil, err
-	}
-
-	return st, nil
-}
-
-func ensureLocalMigrations(stateDir string) error {
-	path := filepath.Join(stateDir, localMigrationsDir)
-	if err := os.MkdirAll(path, 0o700); err != nil {
-		return fmt.Errorf("create migrations dir: %w", err)
-	}
-	file := filepath.Join(path, localMigrationName)
-	if _, err := os.Stat(file); err == nil {
-		return nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("stat migration: %w", err)
-	}
-	if err := os.WriteFile(file, []byte(localMigrationSQL), 0o644); err != nil {
-		return fmt.Errorf("write migration: %w", err)
-	}
-	return nil
-}
-
-func withDir(dir string, fn func() error) error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("get working dir: %w", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		return fmt.Errorf("enter %s: %w", dir, err)
-	}
-	defer func() {
-		_ = os.Chdir(wd)
-	}()
-	return fn()
+	return yanzilibrary.InitDB()
 }
 
 func buildLocalIntent(req createIntentInput) (model.IntentRecord, error) {
@@ -130,8 +61,40 @@ func newIntentID() (string, error) {
 	return hex.EncodeToString(buf[:]), nil
 }
 
-func verifyLocalIntent(ctx context.Context, st *store.Store, id string) (verifyResult, error) {
-	record, err := st.GetIntent(ctx, id)
+func createLocalIntent(ctx context.Context, db *sql.DB, record model.IntentRecord) error {
+	var title any
+	if record.Title != "" {
+		title = record.Title
+	}
+	var meta any
+	if len(record.Meta) > 0 {
+		meta = string(record.Meta)
+	}
+	var prevHash any
+	if record.PrevHash != "" {
+		prevHash = record.PrevHash
+	}
+
+	_, err := db.ExecContext(
+		ctx,
+		`INSERT INTO intents (id, created_at, author, source_type, title, prompt, response, meta, prev_hash, hash)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		record.ID,
+		record.CreatedAt,
+		record.Author,
+		record.SourceType,
+		title,
+		record.Prompt,
+		record.Response,
+		meta,
+		prevHash,
+		record.Hash,
+	)
+	return err
+}
+
+func verifyLocalIntent(ctx context.Context, db *sql.DB, id string) (verifyResult, error) {
+	record, err := dbGetIntent(ctx, db, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return verifyResult{}, fmt.Errorf("intent not found: %s", id)
@@ -154,8 +117,8 @@ func verifyLocalIntent(ctx context.Context, st *store.Store, id string) (verifyR
 	return result, nil
 }
 
-func chainLocalIntent(ctx context.Context, st *store.Store, id string) (chainResult, error) {
-	head, err := st.GetIntent(ctx, id)
+func chainLocalIntent(ctx context.Context, db *sql.DB, id string) (chainResult, error) {
+	head, err := dbGetIntent(ctx, db, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return chainResult{}, fmt.Errorf("intent not found: %s", id)
@@ -167,7 +130,7 @@ func chainLocalIntent(ctx context.Context, st *store.Store, id string) (chainRes
 	current := head
 	var missing []string
 	for current.PrevHash != "" {
-		prev, err := st.GetIntentByHash(ctx, current.PrevHash)
+		prev, err := dbGetIntentByHash(ctx, db, current.PrevHash)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				missing = append(missing, current.PrevHash)
@@ -191,7 +154,7 @@ func chainLocalIntent(ctx context.Context, st *store.Store, id string) (chainRes
 	}, nil
 }
 
-func listLocalIntents(ctx context.Context, st *store.Store, author, source string, limit int, metaFilters map[string]string) ([]model.IntentRecord, error) {
+func listLocalIntents(ctx context.Context, db *sql.DB, author, source string, limit int, metaFilters map[string]string) ([]model.IntentRecord, error) {
 	fetchLimit := limit
 	if fetchLimit <= 0 {
 		fetchLimit = 20
@@ -203,7 +166,7 @@ func listLocalIntents(ctx context.Context, st *store.Store, author, source strin
 		}
 	}
 
-	intents, err := st.ListIntents(ctx, fetchLimit)
+	intents, err := listLocalIntentsFromDB(ctx, db, fetchLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -232,8 +195,8 @@ func listLocalIntents(ctx context.Context, st *store.Store, author, source strin
 	return filtered, nil
 }
 
-func getLocalIntent(ctx context.Context, st *store.Store, id string) (model.IntentRecord, error) {
-	record, err := st.GetIntent(ctx, id)
+func getLocalIntent(ctx context.Context, db *sql.DB, id string) (model.IntentRecord, error) {
+	record, err := dbGetIntent(ctx, db, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.IntentRecord{}, fmt.Errorf("intent not found for ID %s", id)
@@ -241,6 +204,118 @@ func getLocalIntent(ctx context.Context, st *store.Store, id string) (model.Inte
 		return model.IntentRecord{}, err
 	}
 	return record, nil
+}
+
+func dbGetIntent(ctx context.Context, db *sql.DB, id string) (model.IntentRecord, error) {
+	var record model.IntentRecord
+	var title sql.NullString
+	var meta sql.NullString
+	var prevHash sql.NullString
+	row := db.QueryRowContext(ctx, `SELECT id, created_at, author, source_type, title, prompt, response, meta, prev_hash, hash FROM intents WHERE id = ?`, id)
+	if err := row.Scan(
+		&record.ID,
+		&record.CreatedAt,
+		&record.Author,
+		&record.SourceType,
+		&title,
+		&record.Prompt,
+		&record.Response,
+		&meta,
+		&prevHash,
+		&record.Hash,
+	); err != nil {
+		return model.IntentRecord{}, err
+	}
+	if title.Valid {
+		record.Title = title.String
+	}
+	if meta.Valid && meta.String != "" {
+		record.Meta = []byte(meta.String)
+	}
+	if prevHash.Valid {
+		record.PrevHash = prevHash.String
+	}
+	return record, nil
+}
+
+func dbGetIntentByHash(ctx context.Context, db *sql.DB, intentHash string) (model.IntentRecord, error) {
+	var record model.IntentRecord
+	var title sql.NullString
+	var meta sql.NullString
+	var prevHash sql.NullString
+	row := db.QueryRowContext(ctx, `SELECT id, created_at, author, source_type, title, prompt, response, meta, prev_hash, hash FROM intents WHERE hash = ?`, intentHash)
+	if err := row.Scan(
+		&record.ID,
+		&record.CreatedAt,
+		&record.Author,
+		&record.SourceType,
+		&title,
+		&record.Prompt,
+		&record.Response,
+		&meta,
+		&prevHash,
+		&record.Hash,
+	); err != nil {
+		return model.IntentRecord{}, err
+	}
+	if title.Valid {
+		record.Title = title.String
+	}
+	if meta.Valid && meta.String != "" {
+		record.Meta = []byte(meta.String)
+	}
+	if prevHash.Valid {
+		record.PrevHash = prevHash.String
+	}
+	return record, nil
+}
+
+func listLocalIntentsFromDB(ctx context.Context, db *sql.DB, limit int) ([]model.IntentRecord, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	rows, err := db.QueryContext(ctx, `SELECT id, created_at, author, source_type, title, prompt, response, meta, prev_hash, hash FROM intents ORDER BY created_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var intents []model.IntentRecord
+	for rows.Next() {
+		var record model.IntentRecord
+		var title sql.NullString
+		var meta sql.NullString
+		var prevHash sql.NullString
+		if err := rows.Scan(
+			&record.ID,
+			&record.CreatedAt,
+			&record.Author,
+			&record.SourceType,
+			&title,
+			&record.Prompt,
+			&record.Response,
+			&meta,
+			&prevHash,
+			&record.Hash,
+		); err != nil {
+			return nil, err
+		}
+		if title.Valid {
+			record.Title = title.String
+		}
+		if meta.Valid && meta.String != "" {
+			record.Meta = []byte(meta.String)
+		}
+		if prevHash.Valid {
+			record.PrevHash = prevHash.String
+		}
+		intents = append(intents, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return intents, nil
 }
 
 type createIntentInput struct {

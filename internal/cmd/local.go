@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/config"
-	"github.com/chuxorg/chux-yanzi-core/hash"
-	"github.com/chuxorg/chux-yanzi-core/model"
-	"github.com/chuxorg/chux-yanzi-core/store"
-	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
+	"github.com/chuxorg/chux-yanzi-cli/internal/core/hash"
+	"github.com/chuxorg/chux-yanzi-cli/internal/core/model"
+	"github.com/chuxorg/chux-yanzi-cli/internal/core/store"
+	yanzilibrary "github.com/chuxorg/chux-yanzi-cli/internal/library"
 )
 
 func openLocalDB(cfg config.Config) (*sql.DB, error) {

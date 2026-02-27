@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/config"
-	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
+	yanzilibrary "github.com/chuxorg/chux-yanzi-cli/internal/library"
 )
 
 // RunProject handles project subcommands.

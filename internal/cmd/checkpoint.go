@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/config"
-	yanzilibrary "github.com/chuxorg/chux-yanzi-library"
+	yanzilibrary "github.com/chuxorg/chux-yanzi-cli/internal/library"
 )
 
 // RunCheckpoint handles checkpoint subcommands.

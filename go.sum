@@ -1,7 +1,3 @@
-github.com/chuxorg/chux-yanzi-core v1.0.10 h1:5QN9NI8ydTXh5+sqKHKV9FXvfE/TW5ESD56ZI+z3axg=
-github.com/chuxorg/chux-yanzi-core v1.0.10/go.mod h1:Hh7eyv7dCWzrej6sfCqtEIEEj7LfpnzXeKOwyLIbaIQ=
-github.com/chuxorg/chux-yanzi-library v0.1.0-qa.1 h1:qnmHgecLmgaiPmObm8iVipRDqmCz3jLuqi5rLB+Bccc=
-github.com/chuxorg/chux-yanzi-library v0.1.0-qa.1/go.mod h1:srujjyp2VRu0U1sEcuxRF9LZGmbwYBjWFmpUXlLnpiw=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e h1:ijClszYn+mADRFY17kjQEVQ1XRhq2/JR1M3sGqeJoxs=

@@ -3,8 +3,6 @@ module github.com/chuxorg/chux-yanzi-cli
 go 1.24.0
 
 require (
-	github.com/chuxorg/chux-yanzi-core v1.0.10
-	github.com/chuxorg/chux-yanzi-library v0.1.0-qa.1
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.45.0
 )

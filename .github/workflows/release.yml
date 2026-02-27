@@ -7,10 +7,22 @@ on:
 
 jobs:
   build:
+    if: ${{ !endsWith(github.ref_name, '-qa') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure tag points to master history
+        run: |
+          git fetch --no-tags --depth=1 origin master
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/master"; then
+            echo "Release tags must point to commits on master."
+            echo "Tag: ${GITHUB_REF_NAME}  Commit: ${GITHUB_SHA}"
+            exit 1
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@v5

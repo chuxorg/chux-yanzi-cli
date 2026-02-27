@@ -3,10 +3,8 @@ module github.com/chuxorg/chux-yanzi-cli
 go 1.24.0
 
 require (
-	github.com/chuxorg/chux-yanzi-core v0.1.0-qa.1
-	github.com/chuxorg/chux-yanzi-library v0.1.0-qa.1
+	github.com/chuxorg/chux-yanzi-core v1.0.4
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.45.0
 )
 
 require (
@@ -20,4 +18,5 @@ require (
 	modernc.org/libc v1.67.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
+	modernc.org/sqlite v1.45.0 // indirect
 )

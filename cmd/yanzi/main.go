@@ -6,6 +6,7 @@ import (
 
 	"github.com/chuxorg/chux-yanzi-cli/internal/cmd"
 	"github.com/chuxorg/chux-yanzi-cli/internal/config"
+	yanzilibrary "github.com/chuxorg/chux-yanzi-cli/internal/library"
 )
 
 var version = "dev"
@@ -14,6 +15,15 @@ func main() {
 	if len(os.Args) < 2 {
 		usage()
 		os.Exit(1)
+	}
+
+	initialized, err := yanzilibrary.Initialize()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if initialized {
+		fmt.Println("Yanzi initialized at ~/.yanzi")
 	}
 
 	if os.Args[1] == "--version" {
@@ -29,7 +39,7 @@ func main() {
 		return
 	}
 
-	var err error
+	err = nil
 	switch os.Args[1] {
 	case "capture":
 		err = cmd.RunCapture(os.Args[2:])

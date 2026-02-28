@@ -27,6 +27,33 @@ var (
 	resolvedMu     sync.RWMutex
 )
 
+const schemaVersionTable = `
+CREATE TABLE IF NOT EXISTS schema_version (
+	version INTEGER NOT NULL,
+	applied_at TIMESTAMP NOT NULL
+);
+`
+
+// Initialize ensures the default yanzi runtime directory, database, and schema exist.
+// It returns true when this run performed first-time schema initialization.
+func Initialize() (bool, error) {
+	path, err := resolveDBPath()
+	if err != nil {
+		return false, err
+	}
+
+	db, initialized, err := openInitializedDB(path)
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = db.Close()
+	}()
+
+	setResolvedDBPath(path)
+	return initialized, nil
+}
+
 // InitDB resolves the database path, ensures migrations, and returns a SQLite handle.
 func InitDB() (*sql.DB, error) {
 	path, err := resolveDBPath()
@@ -34,30 +61,8 @@ func InitDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	db, err := sql.Open("sqlite", path)
+	db, _, err := openInitializedDB(path)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := db.Ping(); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	if _, err := db.Exec(`PRAGMA foreign_keys=ON;`); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	if _, err := db.Exec(`PRAGMA busy_timeout=5000;`); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-
-	if err := migrateDB(context.Background(), db); err != nil {
-		_ = db.Close()
 		return nil, err
 	}
 
@@ -81,10 +86,6 @@ func setResolvedDBPath(path string) {
 
 // resolveDBPath determines the SQLite path from YANZI_DB_PATH or the default ~/.yanzi/yanzi.db.
 func resolveDBPath() (string, error) {
-	if override := strings.TrimSpace(os.Getenv(envDBPath)); override != "" {
-		return override, nil
-	}
-
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve home dir: %w", err)
@@ -93,6 +94,10 @@ func resolveDBPath() (string, error) {
 	dir := filepath.Join(home, defaultDBDirName)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("ensure db dir: %w", err)
+	}
+
+	if override := strings.TrimSpace(os.Getenv(envDBPath)); override != "" {
+		return override, nil
 	}
 
 	return filepath.Join(dir, defaultDBFile), nil
@@ -104,6 +109,82 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 	applied_at TEXT NOT NULL
 );
 `
+
+func openInitializedDB(path string) (*sql.DB, bool, error) {
+	if err := ensureDBFile(path); err != nil {
+		return nil, false, err
+	}
+
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, false, fmt.Errorf("open db: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		_ = db.Close()
+		return nil, false, fmt.Errorf("ping db: %w", err)
+	}
+	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
+		_ = db.Close()
+		return nil, false, err
+	}
+	if _, err := db.Exec(`PRAGMA foreign_keys=ON;`); err != nil {
+		_ = db.Close()
+		return nil, false, err
+	}
+	if _, err := db.Exec(`PRAGMA busy_timeout=5000;`); err != nil {
+		_ = db.Close()
+		return nil, false, err
+	}
+
+	initialized, err := ensureSchemaVersion(context.Background(), db)
+	if err != nil {
+		_ = db.Close()
+		return nil, false, err
+	}
+
+	if err := migrateDB(context.Background(), db); err != nil {
+		_ = db.Close()
+		return nil, false, err
+	}
+
+	return db, initialized, nil
+}
+
+func ensureDBFile(path string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("create db directory: %w", err)
+	}
+
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return fmt.Errorf("create db file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close db file: %w", err)
+	}
+	return nil
+}
+
+func ensureSchemaVersion(ctx context.Context, db *sql.DB) (bool, error) {
+	if _, err := db.ExecContext(ctx, schemaVersionTable); err != nil {
+		return false, fmt.Errorf("create schema_version: %w", err)
+	}
+
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(1) FROM schema_version`).Scan(&count); err != nil {
+		return false, fmt.Errorf("read schema_version: %w", err)
+	}
+	if count > 0 {
+		return false, nil
+	}
+
+	if _, err := db.ExecContext(ctx, `INSERT INTO schema_version (version, applied_at) VALUES (?, ?)`, 1, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		return false, fmt.Errorf("write schema_version: %w", err)
+	}
+	return true, nil
+}
 
 // migrateDB applies embedded SQL migrations that have not yet been recorded.
 func migrateDB(ctx context.Context, db *sql.DB) error {

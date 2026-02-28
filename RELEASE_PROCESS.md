@@ -9,7 +9,6 @@ Yanzi is released from a single repository and follows a two-path merge model:
 ## Versioning Rules
 - Semantic versioning is required.
 - `VERSION` stores plain semver (`X.Y.Z`).
-- QA tags, if used manually, follow `vX.Y.Z-qa`.
 - Production releases follow `vX.Y.Z`.
 - Never reuse tags.
 

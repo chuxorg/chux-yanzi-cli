@@ -20,6 +20,7 @@ Yanzi is a local workflow state manager for AI-assisted development that enables
 - Capture primitive: `yanzi capture --prompt ... --response ...` (project metadata auto-attached when active; `--author` is required).
 - Checkpoint primitive: `yanzi checkpoint create --summary "..."`, `yanzi checkpoint list`.
 - Deterministic resume: `yanzi rehydrate`.
+- Deterministic project log export: `yanzi export --format markdown`.
 - Immutable artifact storage with deterministic hashing and an append-only ledger.
 - Unit-tested primitives.
 
@@ -50,6 +51,7 @@ yanzi project create MyProject
 yanzi project use MyProject
 yanzi capture --prompt "Build landing page" --response "..."
 yanzi checkpoint create --summary "Initial layout complete"
+yanzi export --format markdown
 yanzi rehydrate
 ```
 
@@ -57,6 +59,7 @@ yanzi rehydrate
 - `yanzi project use` sets the active project in `.yanzi/state.json`.
 - `yanzi capture` stores the prompt/response and attaches active project metadata. Add `--author` when running this command.
 - `yanzi checkpoint create` saves a checkpoint for the active project.
+- `yanzi export --format markdown` generates `YANZI_LOG.md` in project root.
 - `yanzi rehydrate` prints the latest checkpoint and artifacts since.
 
 ## Typical Workflow

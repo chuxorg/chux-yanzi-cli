@@ -1,14 +1,16 @@
 .PHONY: build run test docs docs-check
 
 DOCGEN=go run github.com/princjef/gomarkdoc/cmd/gomarkdoc@v1.1.0
+VERSION?=$(shell cat VERSION)
+LDFLAGS=-X main.version=v$(VERSION)
 
 
 build:
 	@mkdir -p bin
-	go build -o bin/yanzi ./cmd/yanzi
+	go build -ldflags "$(LDFLAGS)" -o bin/yanzi ./cmd/yanzi
 
 run:
-	go run ./cmd/yanzi $(ARGS)
+	go run -ldflags "$(LDFLAGS)" ./cmd/yanzi $(ARGS)
 
 test:
 	go test ./...

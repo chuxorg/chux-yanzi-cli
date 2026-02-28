@@ -49,6 +49,8 @@ func main() {
 		err = cmd.RunCheckpoint(os.Args[2:])
 	case "rehydrate":
 		err = cmd.RunRehydrate(os.Args[2:])
+	case "export":
+		err = cmd.RunExport(os.Args[2:], version)
 	case "version":
 		if err := printVersion(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -80,6 +82,7 @@ commands:
   project  Manage project context.
   checkpoint  Manage checkpoints.
   rehydrate  Rehydrate active project context.
+  export  Export active project history.
   version  Print the CLI version.
 
 capture args:
@@ -126,6 +129,9 @@ checkpoint args:
 rehydrate args:
   (no args)             Rehydrate the active project context.
 
+export args:
+  --format markdown     Export active project history to ./YANZI_LOG.md.
+
 notes:
   mode set to http does not start libraryd.
 
@@ -146,6 +152,7 @@ examples:
   yanzi checkpoint create --summary "Weekly snapshot"
   yanzi checkpoint list
   yanzi rehydrate
+  yanzi export --format markdown
   yanzi version`)
 }
 

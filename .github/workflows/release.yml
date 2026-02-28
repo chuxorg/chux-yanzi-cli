@@ -4,11 +4,10 @@ on:
   push:
     tags:
       - "v*.*.*"
-    tags-ignore:
-      - "v*.*.*-qa"
 
 jobs:
   build:
+    if: ${{ !endsWith(github.ref_name, '-qa') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

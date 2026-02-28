@@ -1,40 +1,31 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  pull_request:
+    types: [closed]
 
 jobs:
   build:
-    if: ${{ !endsWith(github.ref_name, '-qa') }}
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master' && github.event.pull_request.head.ref == 'development' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
+      - name: Checkout merged commit
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
-      - name: Validate release tag format
+      - name: Set release version
+        id: version
         run: |
-          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag must be formatted vX.X.X."
-            echo "Received: ${GITHUB_REF_NAME}"
+          VERSION="v$(cat VERSION)"
+          if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "VERSION must produce a release tag formatted vX.X.X."
+            echo "Resolved: ${VERSION}"
             exit 1
           fi
-
-      - name: Ensure development is merged to master and tag is on master
-        run: |
-          git fetch --no-tags --depth=1 origin master development
-          if ! git merge-base --is-ancestor "origin/development" "origin/master"; then
-            echo "Release requires development to be merged into master."
-            exit 1
-          fi
-          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/master"; then
-            echo "Release tags must point to commits on master."
-            echo "Tag: ${GITHUB_REF_NAME}  Commit: ${GITHUB_SHA}"
-            exit 1
-          fi
+          echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -44,6 +35,13 @@ jobs:
       - name: Build release binaries
         run: |
           mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${GITHUB_REF_NAME}" -o dist/yanzi-linux-amd64 ./cmd/yanzi
-          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${GITHUB_REF_NAME}" -o dist/yanzi-darwin-amd64 ./cmd/yanzi
-          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${GITHUB_REF_NAME}" -o dist/yanzi-darwin-arm64 ./cmd/yanzi
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -o dist/yanzi-linux-amd64 ./cmd/yanzi
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -o dist/yanzi-darwin-amd64 ./cmd/yanzi
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -o dist/yanzi-darwin-arm64 ./cmd/yanzi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.event.pull_request.merge_commit_sha }}
+          files: dist/*

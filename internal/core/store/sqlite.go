@@ -23,10 +23,12 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 );
 `
 
+// Store provides CRUD and migration operations for intent persistence.
 type Store struct {
 	db *sql.DB
 }
 
+// Open creates a SQLite-backed Store with required runtime pragmas enabled.
 func Open(path string) (*Store, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, errors.New("sqlite path is required")

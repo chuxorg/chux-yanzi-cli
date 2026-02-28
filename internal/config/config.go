@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Mode controls whether yanzi runs against local storage or HTTP APIs.
 type Mode string
 
 const (

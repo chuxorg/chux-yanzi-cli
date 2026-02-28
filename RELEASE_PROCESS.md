@@ -1,59 +1,44 @@
 # Yanzi Release Process
 
 ## Overview
-Yanzi consists of multiple Go modules:
+Yanzi is released from a single repository and follows a two-path merge model:
 
-- chux-yanzi-core (domain primitives)
-- chux-yanzi-library (domain + DB + HTTP server)
-- chux-yanzi-cli (user-facing binary)
-- chux-yanzi-emitter (optional transport client)
-
-Only the CLI repository produces downloadable binaries.
+- QA Build path: merged PRs into `development`
+- Release Build path: merged PR from `development` into `master`
 
 ## Versioning Rules
-- Semantic versioning required.
-- QA releases use: vX.Y.Z-qa
-- Production releases use: vX.Y.Z
-- Only bump a module’s version if that module’s code changes.
-- Versions across modules do NOT need to match.
-
-## Release Order (Bottom-Up)
-1. Tag chux-yanzi-core
-   - Ensure clean working tree
-   - go mod tidy
-   - go test ./...
-   - git tag -a vX.Y.Z-qa -m "QA release"
-   - git push origin vX.Y.Z-qa
-
-2. Tag chux-yanzi-library
-   - Update core dependency:
-     go get github.com/chuxorg/chux-yanzi-core@vX.Y.Z-qa
-   - go mod tidy
-   - go test ./...
-   - git tag -a vX.Y.Z-qa
-   - git push origin vX.Y.Z-qa
-
-3. Tag chux-yanzi-cli
-   - Update dependencies:
-     go get github.com/chuxorg/chux-yanzi-core@vX.Y.Z-qa
-     go get github.com/chuxorg/chux-yanzi-library@vX.Y.Z-qa
-   - go mod tidy
-   - go test ./...
-   - git tag -a vX.Y.Z-qa
-   - git push origin vX.Y.Z-qa
-
-## Binary Release
-- CLI tag triggers GitHub Action.
-- GitHub Action builds platform binaries.
-- Artifacts are attached to GitHub release.
-- -qa tags are marked prerelease.
-
-## Important Rules
+- Semantic versioning is required.
+- `VERSION` stores plain semver (`X.Y.Z`).
+- QA tags, if used manually, follow `vX.Y.Z-qa`.
+- Production releases follow `vX.Y.Z`.
 - Never reuse tags.
-- Never change module path without bumping version.
-- Never rely on pseudo-versions in release.
-- Always run go mod tidy before tagging.
-- CLI is the only repo that produces artifacts.
 
-## Production Release
-Repeat the same process without "-qa".
+## QA Build Path
+Triggered by GitHub Actions when a pull request is merged into `development`.
+
+Expected checks:
+- `go mod tidy` with dirty check on `go.mod`/`go.sum`
+- `go vet ./...`
+- `go test ./...`
+- `go build ./cmd/yanzi`
+
+## Release Build Path
+Triggered by GitHub Actions when a pull request from `development` is merged into `master`.
+
+Release workflow behavior:
+- Reads `VERSION` and resolves release tag `v$(cat VERSION)`.
+- Validates the tag format as `vX.Y.Z`.
+- Builds binaries for:
+  - linux/amd64
+  - darwin/amd64
+  - darwin/arm64
+- Embeds version via:
+  - `-ldflags "-X main.version=<tag>"`
+- Creates a GitHub release and uploads built binaries.
+
+## Operator Steps
+1. Land feature work into `development` via PR.
+2. Confirm QA build passes on merge.
+3. Bump `VERSION` to next production version in `development`.
+4. Merge `development` into `master` via PR.
+5. Confirm release workflow completes and GitHub release is created.

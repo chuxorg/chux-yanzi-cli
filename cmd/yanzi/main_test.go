@@ -48,6 +48,9 @@ func TestUsagePrintsHelp(t *testing.T) {
 	if !strings.Contains(output, "export  Export active project history.") {
 		t.Fatalf("expected export command description, got: %s", output)
 	}
+	if !strings.Contains(output, "--meta key=value") {
+		t.Fatalf("expected capture metadata help text, got: %s", output)
+	}
 }
 
 func captureStderr(t *testing.T, fn func()) string {

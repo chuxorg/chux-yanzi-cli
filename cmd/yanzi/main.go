@@ -104,7 +104,7 @@ capture args:
   --title <title>         Optional title.
   --source <source>       Optional source type (default "cli").
   --prev-hash <hash>      Optional previous hash.
-  --meta k=v              Optional metadata (repeatable).
+  --meta key=value        Optional metadata (repeatable).
 
 verify args:
   <intent-id>             Intent id to verify.

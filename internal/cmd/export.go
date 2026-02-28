@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -36,6 +37,7 @@ type exportItem struct {
 	Hash      string
 	Prompt    string
 	Response  string
+	Metadata  map[string]string
 
 	Command string
 	Value   string
@@ -115,7 +117,11 @@ func loadExportItems(ctx context.Context, db *sql.DB, project string) ([]exportI
 		if err := intentRows.Scan(&rowID, &id, &createdAt, &author, &sourceType, &prompt, &response, &hashValue, &metaText); err != nil {
 			return nil, 0, err
 		}
-		if !intentBelongsToProject(metaText.String, project) {
+		meta, err := decodeStringMeta(metaText.String)
+		if err != nil {
+			continue
+		}
+		if strings.TrimSpace(meta["project"]) != project {
 			continue
 		}
 
@@ -139,6 +145,7 @@ func loadExportItems(ctx context.Context, db *sql.DB, project string) ([]exportI
 			Hash:      hashValue,
 			Prompt:    prompt,
 			Response:  response,
+			Metadata:  meta,
 			RowID:     rowID,
 		})
 	}
@@ -177,24 +184,33 @@ func loadExportItems(ctx context.Context, db *sql.DB, project string) ([]exportI
 	return mergeChronological(intents, checkpoints), captureCount, nil
 }
 
-func intentBelongsToProject(metaText, project string) bool {
+func decodeStringMeta(metaText string) (map[string]string, error) {
 	if strings.TrimSpace(metaText) == "" {
-		return false
+		return nil, nil
 	}
 
-	var meta map[string]any
+	var meta map[string]string
 	if err := json.Unmarshal([]byte(metaText), &meta); err != nil {
-		return false
+		return nil, err
 	}
-	raw, ok := meta["project"]
-	if !ok {
-		return false
+	return meta, nil
+}
+
+func sortedMetaPairs(meta map[string]string) []string {
+	if len(meta) == 0 {
+		return nil
 	}
-	value, ok := raw.(string)
-	if !ok {
-		return false
+	keys := make([]string, 0, len(meta))
+	for key := range meta {
+		keys = append(keys, key)
 	}
-	return strings.TrimSpace(value) == project
+	sort.Strings(keys)
+
+	lines := make([]string, 0, len(keys))
+	for _, key := range keys {
+		lines = append(lines, fmt.Sprintf("  %s: %s", key, meta[key]))
+	}
+	return lines
 }
 
 func isMetaCommandSource(sourceType string) bool {
@@ -270,6 +286,12 @@ func renderMarkdownLog(project, cliVersion string, now time.Time, items []export
 			b.WriteString(fmt.Sprintf("Role: %s\n", item.Role))
 			b.WriteString(fmt.Sprintf("Timestamp: %s\n", item.Timestamp))
 			b.WriteString(fmt.Sprintf("Hash: %s\n\n", item.Hash))
+			metaLines := sortedMetaPairs(item.Metadata)
+			if len(metaLines) > 0 {
+				b.WriteString("Metadata:\n")
+				b.WriteString(strings.Join(metaLines, "\n"))
+				b.WriteString("\n\n")
+			}
 			b.WriteString("**Prompt**\n")
 			b.WriteString("```text\n")
 			b.WriteString(item.Prompt)

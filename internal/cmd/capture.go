@@ -35,7 +35,7 @@ func RunCapture(args []string) error {
 	)
 	fs.Var(&promptFlag, "prompt", promptFlag.help)
 	fs.Var(&respFlag, "response", respFlag.help)
-	fs.Var(metaPairs, "meta", "meta key=value (repeatable)")
+	fs.Var(metaPairs, "meta", "key=value (optional, repeatable)")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -188,7 +188,7 @@ func (k *kvPairs) ToJSON() (json.RawMessage, error) {
 	for _, pair := range *k {
 		parts := strings.SplitN(pair, "=", 2)
 		if len(parts) != 2 || parts[0] == "" {
-			return nil, fmt.Errorf("invalid meta value: %s", pair)
+			return nil, fmt.Errorf("invalid --meta argument %q (expected key=value)", pair)
 		}
 		obj[parts[0]] = parts[1]
 	}

@@ -1,5 +1,10 @@
 # Yanzi
 
+[![QA Build](https://github.com/chuxorg/chux-yanzi-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/chuxorg/chux-yanzi-cli/actions/workflows/ci.yml)
+[![Release](https://github.com/chuxorg/chux-yanzi-cli/actions/workflows/release.yml/badge.svg)](https://github.com/chuxorg/chux-yanzi-cli/actions/workflows/release.yml)
+
+Links: [yanzi (install info)](https://github.com/chuxorg/yanzi) | [yanzi.io](https://yanzi.io) | [chucksailer.me](https://chucksailer.me)
+
 Yanzi is a local workflow state manager for AI-assisted development that enables deterministic resume via projects and checkpoints.
 
 ## Why Yanzi
@@ -19,6 +24,8 @@ Yanzi is a local workflow state manager for AI-assisted development that enables
 - Unit-tested primitives.
 
 ## Installation
+For installation details, see the [yanzi repo](https://github.com/chuxorg/yanzi).
+
 ```sh
 go install github.com/chuxorg/chux-yanzi-cli/cmd/yanzi@latest
 ```

@@ -86,6 +86,38 @@ func TestExportMarkdownChronological(t *testing.T) {
 	}
 }
 
+func TestExportMarkdownRendersSortedMetadata(t *testing.T) {
+	workdir := t.TempDir()
+	t.Setenv("HOME", workdir)
+	withCwd(t, workdir)
+	writeTestConfig(t, workdir)
+	writeStateFile(t, workdir, "alpha")
+
+	db := openConfiguredDBForExportTest(t)
+	defer db.Close()
+	seedProject(t, db, "alpha")
+	seedIntentWithMeta(t, db, "cap-meta", "2025-01-01T00:00:01Z", "engineer", "cli", "prompt", "response", map[string]string{
+		"project":       "alpha",
+		"decision_type": "refactor",
+		"area":          "auth",
+		"tags":          "migration,security",
+	})
+
+	if err := RunExport([]string{"--format", "markdown"}, "v1.0.0"); err != nil {
+		t.Fatalf("RunExport: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(workdir, "YANZI_LOG.md"))
+	if err != nil {
+		t.Fatalf("read export: %v", err)
+	}
+	output := string(data)
+	metaBlock := "Metadata:\n  area: auth\n  decision_type: refactor\n  project: alpha\n  tags: migration,security\n"
+	if !strings.Contains(output, metaBlock) {
+		t.Fatalf("expected sorted metadata block, got: %q", output)
+	}
+}
+
 func TestExportMarkdownNoCapturesRecorded(t *testing.T) {
 	workdir := t.TempDir()
 	t.Setenv("HOME", workdir)
@@ -164,7 +196,12 @@ func openConfiguredDBForExportTest(t *testing.T) *sql.DB {
 
 func seedIntentWithSource(t *testing.T, db *sql.DB, id, createdAt, project, author, sourceType, prompt, response string) {
 	t.Helper()
-	meta, err := json.Marshal(map[string]string{"project": project})
+	seedIntentWithMeta(t, db, id, createdAt, author, sourceType, prompt, response, map[string]string{"project": project})
+}
+
+func seedIntentWithMeta(t *testing.T, db *sql.DB, id, createdAt, author, sourceType, prompt, response string, metaPayload map[string]string) {
+	t.Helper()
+	meta, err := json.Marshal(metaPayload)
 	if err != nil {
 		t.Fatalf("encode meta: %v", err)
 	}

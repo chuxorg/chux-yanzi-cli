@@ -3,11 +3,10 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
 
 jobs:
   build:
-    if: ${{ !endsWith(github.ref_name, '-qa') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -15,9 +14,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure tag points to master history
+      - name: Validate release tag format
         run: |
-          git fetch --no-tags --depth=1 origin master
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag must be formatted vX.X.X."
+            echo "Received: ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+      - name: Ensure development is merged to master and tag is on master
+        run: |
+          git fetch --no-tags --depth=1 origin master development
+          if ! git merge-base --is-ancestor "origin/development" "origin/master"; then
+            echo "Release requires development to be merged into master."
+            exit 1
+          fi
           if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/master"; then
             echo "Release tags must point to commits on master."
             echo "Tag: ${GITHUB_REF_NAME}  Commit: ${GITHUB_SHA}"

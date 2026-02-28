@@ -28,6 +28,15 @@ If you already have the repo checked out:
 go install ./cmd/yanzi
 ```
 
+## Code Documentation
+- Yanzi uses `gomarkdoc` to generate API docs from Go comments.
+- Generated docs are written to `docs/API.md` and include an Index section (TOC).
+
+```sh
+make docs
+make docs-check
+```
+
 ## Quick Start
 ```sh
 yanzi project create MyProject

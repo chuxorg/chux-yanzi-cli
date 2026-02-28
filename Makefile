@@ -1,4 +1,6 @@
-.PHONY: build run test
+.PHONY: build run test docs docs-check
+
+DOCGEN=go run github.com/princjef/gomarkdoc/cmd/gomarkdoc@v1.1.0
 
 
 build:
@@ -10,3 +12,9 @@ run:
 
 test:
 	go test ./...
+
+docs:
+	$(DOCGEN) -o docs/API.md ./cmd/yanzi ./internal/...
+
+docs-check:
+	$(DOCGEN) --check -o docs/API.md ./cmd/yanzi ./internal/...

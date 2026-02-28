@@ -13,8 +13,9 @@
 ## Versioning
 
 - Version type (major/minor/patch) is decided by human before release.
-- Tags are only created after merge into development (QA).
-- Production tags are created manually on master.
+- `VERSION` stores plain semver (`X.Y.Z`).
+- Release automation resolves tag `v$(cat VERSION)` during master release flow.
+- Optional QA tags may use `vX.Y.Z-qa`.
 - No tag reuse.
 - No pseudo-versions.
 - No replace directives in go.mod.
@@ -22,10 +23,10 @@
 ## QA Flow
 
 1. Merge feature branch → development.
-2. Tag development with semver (major/minor/patch).
-3. QA build runs.
-4. Validate binaries.
-5. Merge development → master.
-6. Tag master for production release.
+2. QA build runs on merged PR event.
+3. Validate QA checks.
+4. Merge development → master.
+5. Release build runs on merged PR event.
+6. GitHub release is created with production binaries.
 
 ---

@@ -54,6 +54,8 @@ nav:
           - Agent Communication: use-cases/agent-communication.md
           - Seeding: use-cases/seeding.md
           - Retrieval: use-cases/retrieval.md
+      - CAPs:
+          - CAP-200 Operational Supervision: caps/CAP-200-operational-supervision.md
   - Developer:
       - Agent Bootstrap: agent-bootstrap.md
       - Release Protocol: dev/RELEASE_PROTOCOL.md
